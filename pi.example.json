@@ -1,0 +1,9 @@
+{
+  "host": "raspberrypi.local",
+  "user": "pi",
+  "remote_dir": "/home/pi/robot-arm",
+  "ssh_port": 22,
+  "app_port": 8765,
+  "identity_file": null,
+  "known_hosts": ".local/known_hosts"
+}

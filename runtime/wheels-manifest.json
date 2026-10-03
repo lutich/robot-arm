@@ -1,0 +1,206 @@
+[
+  {
+    "name": "Adafruit-Blinka-Raspberry-Pi5-Neopixel",
+    "version": "1.0.0rc2",
+    "sha256": "eacec8eb4ce6cd3f10073668dca8549b93bf0b57831cc0e350d2e9de594c7967",
+    "file": "Adafruit_Blinka_Raspberry_Pi5_Neopixel-1.0.0rc2-cp313-cp313-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl"
+  },
+  {
+    "name": "Adafruit-Blinka",
+    "version": "9.2.0",
+    "sha256": "5eabae2863e838f4e556ecd22e2a504a530b2c401e2382ae6c9aab2bffa5d7dd",
+    "file": "adafruit_blinka-9.2.0-py3-none-any.whl"
+  },
+  {
+    "name": "adafruit-circuitpython-busdevice",
+    "version": "5.2.17",
+    "sha256": "7f2f0fa5e7352c06fa39cb2c73e332ebc23e471e8cfac207a0ba27ebbb652293",
+    "file": "adafruit_circuitpython_busdevice-5.2.17-py3-none-any.whl"
+  },
+  {
+    "name": "adafruit-circuitpython-connectionmanager",
+    "version": "3.1.8",
+    "sha256": "51973f85a3df87070783bb54794a17fb1f783727ebe0d4e1ad734815de8f85c6",
+    "file": "adafruit_circuitpython_connectionmanager-3.1.8-py3-none-any.whl"
+  },
+  {
+    "name": "adafruit-circuitpython-motor",
+    "version": "3.5.0",
+    "sha256": "05211360525a0aac2b414f9614ca8bf69e2a98108b728c6731108990da83d3ba",
+    "file": "adafruit_circuitpython_motor-3.5.0-py3-none-any.whl"
+  },
+  {
+    "name": "adafruit-circuitpython-pca9685",
+    "version": "3.4.22",
+    "sha256": "36ca02d71ac3d6b2f9e752d63cfef2a7dbd09b593b10bf3a8ddf5fc813b474a5",
+    "file": "adafruit_circuitpython_pca9685-3.4.22-py3-none-any.whl"
+  },
+  {
+    "name": "adafruit-circuitpython-register",
+    "version": "1.13.0",
+    "sha256": "eabae5e85e4d4154b90cd88ce518a2c005759298b61f49167c4c0312e560db4b",
+    "file": "adafruit_circuitpython_register-1.13.0-py3-none-any.whl"
+  },
+  {
+    "name": "adafruit-circuitpython-requests",
+    "version": "4.1.17",
+    "sha256": "cfae517c9273efd082c9c82147924fa2a90a7da54f15208f606ed929c643db31",
+    "file": "adafruit_circuitpython_requests-4.1.17-py3-none-any.whl"
+  },
+  {
+    "name": "adafruit-circuitpython-servokit",
+    "version": "1.3.24",
+    "sha256": "87bc38db581cf057579fcd9ee0e6e69efa41a1b19ed3f5911ca99ca12e857e73",
+    "file": "adafruit_circuitpython_servokit-1.3.24-py3-none-any.whl"
+  },
+  {
+    "name": "adafruit-circuitpython-typing",
+    "version": "1.12.3",
+    "sha256": "91b1aadc1af601a70292979c24457f365de9fda31d8501bc4c806ac2346cbbf9",
+    "file": "adafruit_circuitpython_typing-1.12.3-py3-none-any.whl"
+  },
+  {
+    "name": "Adafruit-PlatformDetect",
+    "version": "3.89.1",
+    "sha256": "a5324036805c70304cceb01a32eb87df226569357bb86e26272f0219421c0359",
+    "file": "adafruit_platformdetect-3.89.1-py3-none-any.whl"
+  },
+  {
+    "name": "Adafruit_PureIO",
+    "version": "1.1.12",
+    "sha256": "b3445a2b90034ca18d889dc5e4402683a52176678d7c2863d60b62e614a66238",
+    "file": "adafruit_pureio-1.1.12-py3-none-any.whl"
+  },
+  {
+    "name": "annotated-doc",
+    "version": "0.0.5",
+    "sha256": "117bac03a25ede5df5440e855b32d556049ca169ead221505badf432fed4b101",
+    "file": "annotated_doc-0.0.5-py3-none-any.whl"
+  },
+  {
+    "name": "annotated-types",
+    "version": "0.8.0",
+    "sha256": "f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0",
+    "file": "annotated_types-0.8.0-py3-none-any.whl"
+  },
+  {
+    "name": "anyio",
+    "version": "4.15.1",
+    "sha256": "6152fdbbf9a77fdec97731721bebf7c4c44f7c29b424b0065826173efc7ed101",
+    "file": "anyio-4.15.1-py3-none-any.whl"
+  },
+  {
+    "name": "binho-host-adapter",
+    "version": "0.1.6",
+    "sha256": "f71ca176c1e2fc1a5dce128beb286da217555c6c7c805f2ed282a6f3507ec277",
+    "file": "binho_host_adapter-0.1.6-py3-none-any.whl"
+  },
+  {
+    "name": "click",
+    "version": "8.5.0",
+    "sha256": "255bc9599cf7748b4b1a446ccc735421bd08a2ae529a8b88597d3de5664ee360",
+    "file": "click-8.5.0-py3-none-any.whl"
+  },
+  {
+    "name": "fastapi",
+    "version": "0.142.2",
+    "sha256": "bd5f4d81f1e93a88bcd77caf4dfe3c2dbffc3805407a0007e9a114c18b3a670b",
+    "file": "fastapi-0.142.2-py3-none-any.whl"
+  },
+  {
+    "name": "h11",
+    "version": "0.16.0",
+    "sha256": "63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86",
+    "file": "h11-0.16.0-py3-none-any.whl"
+  },
+  {
+    "name": "idna",
+    "version": "3.20",
+    "sha256": "ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c",
+    "file": "idna-3.20-py3-none-any.whl"
+  },
+  {
+    "name": "lgpio",
+    "version": "0.2.2.0",
+    "sha256": "47f2321c20b15f586a827e9ac4cb1085e6776a45dff7a0a661a937a5d091eddf",
+    "file": "lgpio-0.2.2.0-cp313-cp313-linux_aarch64.whl"
+  },
+  {
+    "name": "opentelemetry-api",
+    "version": "1.45.0",
+    "sha256": "80e068aba7cd56c8b58512d6a36f8d25cb1dfaa0c0a4cc1c938ccf9f362d9cb3",
+    "file": "opentelemetry_api-1.45.0-py3-none-any.whl"
+  },
+  {
+    "name": "pydantic",
+    "version": "2.13.5",
+    "sha256": "346a034f080da3755d8e9cb5e00e8b07de1d39e4f6e2c87d8ab7cafa0b269a73",
+    "file": "pydantic-2.13.5-py3-none-any.whl"
+  },
+  {
+    "name": "pydantic_core",
+    "version": "2.46.5",
+    "sha256": "193375f3548919d3f0b60936ca113ada3e38f264f91b9b8e0508efaad57be931",
+    "file": "pydantic_core-2.46.5-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl"
+  },
+  {
+    "name": "pyftdi",
+    "version": "0.57.2",
+    "sha256": "dec3acdc262594d8b1850a6aee608b861c2973f90011faf5cccae3107d3c67a4",
+    "file": "pyftdi-0.57.2-py3-none-any.whl"
+  },
+  {
+    "name": "pyserial",
+    "version": "3.5",
+    "sha256": "c4451db6ba391ca6ca299fb3ec7bae67a5c55dde170964c7a14ceefec02f2cf0",
+    "file": "pyserial-3.5-py2.py3-none-any.whl"
+  },
+  {
+    "name": "pyusb",
+    "version": "1.3.1",
+    "sha256": "cb7933555f05f6bf0b6219111c3d4433148a3567ddfb250f3e6e8dfc7f6cee3a",
+    "file": "pyusb-1.3.1-py3-none-any.whl"
+  },
+  {
+    "name": "RPi.GPIO",
+    "version": "0.7.1",
+    "sha256": "841ab86f026d6f5f3fbcc5ebac15a14c71ab42620b90dd3f7915e8ebe2d15a3f",
+    "file": "rpi_gpio-0.7.1-cp313-cp313-linux_aarch64.whl"
+  },
+  {
+    "name": "rpi_ws281x",
+    "version": "5.0.0",
+    "sha256": "ec0fcdb2b6e3bffab2baa6003a02ee368d5eae81bf096cd7164689d91597baf5",
+    "file": "rpi_ws281x-5.0.0-cp313-cp313-linux_aarch64.whl"
+  },
+  {
+    "name": "starlette",
+    "version": "1.7.0",
+    "sha256": "67f8e99895493dd2911a03f11314af6ceebeae4e704bb9f43dfc6a9db151c93e",
+    "file": "starlette-1.7.0-py3-none-any.whl"
+  },
+  {
+    "name": "sysv_ipc",
+    "version": "1.2.0",
+    "sha256": "977f0e313c2e663000f0c316682ea2c3f6d2f86bbbdb1bcd274fea244a211df0",
+    "file": "sysv_ipc-1.2.0-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl"
+  },
+  {
+    "name": "typing-inspection",
+    "version": "0.4.4",
+    "sha256": "65b8397ba37ccbce054456aaccddfc91e6e3083c92824df348d96ca832f3f147",
+    "file": "typing_inspection-0.4.4-py3-none-any.whl"
+  },
+  {
+    "name": "typing_extensions",
+    "version": "4.16.0",
+    "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8",
+    "file": "typing_extensions-4.16.0-py3-none-any.whl"
+  },
+  {
+    "name": "uvicorn",
+    "version": "0.54.0",
+    "sha256": "505bdb0f318731d45f1f712071fc781a8981f6847a31c902c9f5e652d4f67faf",
+    "file": "uvicorn-0.54.0-py3-none-any.whl"
+  }
+]

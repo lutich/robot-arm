@@ -1,0 +1,13 @@
+[project]
+name = "roboter-arm"
+version = "0.1.0"
+description = "Raspberry Pi robot arm control and deployment starter"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi==0.142.2",
+    "uvicorn==0.54.0",
+]
+
+[tool.uv]
+package = false

@@ -1,0 +1,7 @@
+#!/usr/bin/env python3
+"""check: see docs/deployment.md for usage."""
+import sys
+from pi import main
+
+if __name__ == "__main__":
+    main(["check", *sys.argv[1:]])

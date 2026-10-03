@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "kind": "inherited",
+  "units": "PCA9685_counts",
+  "nominal_frequency_hz": 60,
+  "validated_limits": false,
+  "source": "Recovered roboarm/config.json from the existing arm; preserved separately by the owner.",
+  "source_sha256": "b652d234683064937127868f6a8319cce4741da589431e258b1d7ff4a903031b",
+  "servos": [
+    {
+      "name": "S1",
+      "id": 0,
+      "values": {
+        "default_value": 330,
+        "home_value": 90,
+        "low_value": 90,
+        "high_value": 660,
+        "z_value": 330,
+        "sign": -1
+      }
+    },
+    {
+      "name": "S2",
+      "id": 1,
+      "values": {
+        "default_value": 540,
+        "home_value": 440,
+        "low_value": 185,
+        "high_value": 660,
+        "z_value": 480,
+        "sign": -1
+      }
+    },
+    {
+      "name": "S3",
+      "id": 2,
+      "values": {
+        "default_value": 580,
+        "home_value": 320,
+        "low_value": 90,
+        "high_value": 660,
+        "z_value": 300,
+        "sign": 1
+      }
+    },
+    {
+      "name": "S4",
+      "id": 3,
+      "values": {
+        "default_value": 195,
+        "home_value": 250,
+        "low_value": 90,
+        "high_value": 660,
+        "z_value": 480,
+        "sign": -1
+      }
+    },
+    {
+      "name": "S5",
+      "id": 4,
+      "values": {
+        "default_value": 480,
+        "home_value": 480,
+        "low_value": 90,
+        "high_value": 660,
+        "z_value": 480,
+        "sign": -1
+      }
+    },
+    {
+      "name": "S6",
+      "id": 5,
+      "values": {
+        "default_value": 650,
+        "home_value": 600,
+        "low_value": 490,
+        "high_value": 660,
+        "z_value": 650,
+        "sign": -1
+      }
+    }
+  ],
+  "note": "Names, bounds, startup/home, z_value and sign are historical settings; no measured angle zero, safe limit or current position is established."
+}

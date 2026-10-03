@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-labelledby="title description">
+  <title id="title">Confirmed robot arm system connections</title>
+  <desc id="description">Owner-confirmed connections on 2026-10-04. A Mac laptop runs the browser and uv setup, deployment and launch tools. It connects over Wi-Fi or Ethernet to a Raspberry Pi 4, deploying over SSH and opening the frontend and HTTP API that the Pi serves on port 8765. The Pi connects by I2C to a PCA9685 at address 0x40. The PCA9685 sends PWM signals on channels 0 through 5 to the six-servo arm. A Pi power supply (official Raspberry Pi supply) powers the Pi by USB-C. A separate servo power supply (Eventek KPS305D) connects to the PCA9685 servo V+ and common ground. Servo power reaches the arm through the PCA9685. Pi, controller, servo supply and servos share ground.</desc>
+  <defs>
+    <marker id="data-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 Z" fill="#1559ac"/>
+    </marker>
+    <marker id="power-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 Z" fill="#b76512"/>
+    </marker>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; fill: #162c49; }
+      .heading { font-size: 28px; font-weight: 700; }
+      .detail { font-size: 20px; fill: #48627d; }
+      .connection { font-size: 22px; font-weight: 600; fill: #1559ac; text-anchor: middle; }
+      .card { fill: #f5f9ff; stroke: #ccdaec; stroke-width: 2; }
+      .data { fill: none; stroke: #1559ac; stroke-width: 3; marker-end: url(#data-arrow); }
+      .power { fill: none; stroke: #b76512; stroke-width: 3; marker-end: url(#power-arrow); }
+      .power-card { fill: #fff8ed; stroke: #e3c6a4; stroke-width: 2; }
+    </style>
+  </defs>
+  <rect width="1280" height="720" rx="20" fill="#fff"/>
+  <text x="40" y="55" font-size="32" font-weight="700">From Mac laptop to robot arm</text>
+  <text x="40" y="88" class="detail">The Pi serves the frontend and API to its network. The Mac deploys over SSH.</text>
+
+  <text x="320" y="151" class="connection">SSH · HTTP</text>
+  <text x="320" y="175" class="detail" text-anchor="middle">Wi-Fi / Ethernet</text>
+  <text x="640" y="163" class="connection">I²C · 0x40</text>
+  <text x="960" y="151" class="connection">PWM signals</text>
+  <text x="960" y="175" class="detail" text-anchor="middle">Channels 0–5</text>
+  <path d="M 280 243 H 360" class="data" marker-start="url(#data-arrow)"/>
+  <path d="M 600 243 H 680" class="data"/>
+  <path d="M 920 243 H 1000" class="data"/>
+
+  <rect x="40" y="195" width="240" height="215" rx="16" class="card"/>
+  <g transform="translate(62 216)" fill="none" stroke="#1559ac" stroke-width="3">
+    <rect x="8" width="76" height="48" rx="5" fill="#fff"/>
+    <path d="M 0 55 H 92 L 84 62 H 8 Z" fill="#dceafb"/>
+    <path d="M 24 15 H 68 M 24 24 H 55 M 24 33 H 62" stroke-width="2"/>
+  </g>
+  <text x="62" y="316" class="heading">Mac laptop</text>
+  <text x="62" y="346" class="detail">Browser + uv tools</text>
+  <text x="62" y="374" class="detail">Setup · deploy · service</text>
+  <text x="62" y="398" font-size="18" fill="#1559ac">Opens raspberrypi.local</text>
+
+  <rect x="360" y="195" width="240" height="215" rx="16" class="card"/>
+  <g transform="translate(382 216)">
+    <rect width="88" height="62" rx="7" fill="#39825b"/>
+    <rect x="29" y="18" width="26" height="25" rx="3" fill="#243b37"/>
+    <rect x="69" y="10" width="24" height="18" rx="2" fill="#cdd9df"/>
+    <rect x="69" y="35" width="24" height="18" rx="2" fill="#cdd9df"/>
+    <rect x="8" y="5" width="49" height="5" rx="2" fill="#f4d278"/>
+    <circle cx="10" cy="51" r="4" fill="#fff"/>
+    <circle cx="59" cy="51" r="4" fill="#fff"/>
+  </g>
+  <text x="382" y="316" class="heading">Raspberry Pi 4</text>
+  <text x="382" y="346" class="detail">Python API + control</text>
+  <text x="382" y="374" class="detail">Network :8765</text>
+  <text x="382" y="398" font-size="18">SDA · SCL · 3.3 V · GND</text>
+
+  <rect x="680" y="195" width="240" height="215" rx="16" class="card"/>
+  <g transform="translate(702 216)">
+    <rect width="92" height="62" rx="7" fill="#1559ac"/>
+    <rect x="13" y="17" width="26" height="28" rx="3" fill="#18334b"/>
+    <rect x="48" y="12" width="32" height="6" rx="2" fill="#f4d278"/>
+    <rect x="48" y="24" width="32" height="6" rx="2" fill="#f4d278"/>
+    <rect x="48" y="36" width="32" height="6" rx="2" fill="#f4d278"/>
+    <rect x="48" y="48" width="32" height="6" rx="2" fill="#f4d278"/>
+    <rect x="7" y="50" width="24" height="16" rx="2" fill="#62a778"/>
+  </g>
+  <text x="702" y="316" class="heading">PCA9685</text>
+  <text x="702" y="346" class="detail">PWM servo controller</text>
+  <text x="702" y="374" class="detail">Logic power: VCC</text>
+  <text x="702" y="398" class="detail">Servo power: V+</text>
+
+  <rect x="1000" y="195" width="240" height="215" rx="16" class="card"/>
+  <g transform="translate(1022 212)" stroke="#334355" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 12 64 H 84" stroke-width="9"/>
+    <path d="M 59 59 L 48 19 L 15 9 L 5 35" stroke-width="11"/>
+    <circle cx="59" cy="59" r="7" fill="#fff" stroke-width="3"/>
+    <circle cx="48" cy="19" r="7" fill="#fff" stroke-width="3"/>
+    <circle cx="15" cy="9" r="6" fill="#fff" stroke-width="3"/>
+    <path d="M 5 35 L -2 44 L 1 53 M 5 35 L 13 44 L 10 53" stroke-width="4"/>
+  </g>
+  <text x="1022" y="316" class="heading">Robot arm</text>
+  <text x="1022" y="346" class="detail">6 servo channels</text>
+  <text x="1022" y="374" class="detail">Base → wrist → gripper</text>
+  <text x="1022" y="398" class="detail">Signal · V+ · GND</text>
+
+  <path d="M 480 510 V 410" class="power"/>
+  <path d="M 800 510 V 410" class="power"/>
+  <path d="M 920 383 H 1000" class="power"/>
+  <text x="960" y="443" font-size="20" fill="#b76512" text-anchor="middle">Servo V+ + GND</text>
+  <rect x="360" y="510" width="240" height="112" rx="16" class="power-card"/>
+  <text x="382" y="546" font-size="22" font-weight="700">Pi power supply</text>
+  <text x="382" y="574" font-size="20">(official Raspberry Pi)</text>
+  <text x="382" y="602" font-size="20">USB-C → Pi power</text>
+  <rect x="680" y="510" width="240" height="112" rx="16" class="power-card"/>
+  <text x="702" y="546" font-size="22" font-weight="700">Servo power supply</text>
+  <text x="702" y="574" font-size="20">(Eventek KPS305D)</text>
+  <text x="702" y="602" font-size="20">+ → V+ · − → GND</text>
+
+  <path d="M 40 536 H 74" class="data"/>
+  <text x="90" y="542" class="detail">Control / data</text>
+  <path d="M 40 581 H 74" class="power"/>
+  <text x="90" y="587" class="detail">Power</text>
+  <path d="M 40 651 H 1240" stroke="#dce4ef" stroke-width="2"/>
+  <text x="40" y="680" font-size="22" font-weight="600">Common ground: Pi · PCA9685 · servo supply · servos</text>
+  <text x="40" y="708" font-size="20" fill="#48627d">Owner-confirmed connections · 2026-10-04. Component artwork is schematic.</text>
+</svg>

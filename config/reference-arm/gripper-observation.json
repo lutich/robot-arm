@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-10-01",
+  "channel": 5,
+  "observed_joint": "gripper",
+  "kind": "observation",
+  "low": 595,
+  "high": 605,
+  "increasing_counts_direction": null,
+  "zero_count": null,
+  "zero_reference": null,
+  "provenance": "2026-10-01 attended channel-5 check at 595\u2013605 counts. User: Only the gripper moved normally. Transcribed observation; not a new test or general limit validation.",
+  "units": "PCA9685_counts",
+  "nominal_frequency_hz": 60,
+  "position_feedback": false
+}

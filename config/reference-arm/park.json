@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-01T13:19:12.481779+00:00",
+  "kind": "observation",
+  "name": "PARK",
+  "counts": {
+    "0": 330,
+    "1": 540,
+    "2": 580,
+    "3": 195,
+    "4": 480,
+    "5": 650
+  },
+  "units": "PCA9685_counts",
+  "nominal_frequency_hz": 60,
+  "observed": true,
+  "scope": "commissioning",
+  "validated_limits": false,
+  "position_feedback": false,
+  "provenance": "2026-10-01 attended supported full-pose hold at these commanded counts. User: PARK confirmed; no issues. Subsequently reported servo power OFF and arm supported. Retrospective observation, not a live pose save or current position. No transition, angle-zero or full-arm supply validation."
+}

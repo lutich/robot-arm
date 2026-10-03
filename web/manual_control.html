@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Robot arm · Manual control</title>
+<link rel="stylesheet" href="/manual_control.css">
+<script src="/manual_control.js" defer></script>
+</head>
+<body>
+<header><div class="header-inner"><div class="brand"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M4 28h24M21 25V15l-6-7H7M15 8l-4 9H5m0 0v5m-2 0h4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="21" cy="15" r="2.8" fill="white" stroke="currentColor" stroke-width="2.2"/><circle cx="15" cy="8" r="2.8" fill="white" stroke="currentColor" stroke-width="2.2"/></svg><span>Robot arm</span></div><button class="emergency" id="emergency"><span class="stop-icon" aria-hidden="true"></span>EMERGENCY STOP</button></div></header>
+<main>
+<details class="accordion" open>
+<summary><span class="number">01</span><span class="section-title">Initialize</span><span class="state" id="init-state"><span class="dot"></span><span id="state-label">Off</span></span><span class="chevron" aria-hidden="true"></span></summary>
+<div class="initialize">
+<figure class="park"><img src="/park-illustration-v2.png" alt="The arm folded into its PARK pose."></figure>
+<div class="initialize-controls">
+<label class="readiness"><input id="ready" type="checkbox"><span>The arm is in PARK and supported. Motion paths are clear; Eventek is ready and its switch is within reach.</span></label>
+<div class="power-row"><button class="power" id="power" disabled>Power on</button><span class="power-note">On → HOME · Off → PARK<br>Eventek supply is switched manually.</span></div>
+</div>
+</div>
+</details>
+<details class="accordion" open>
+<summary><span class="number">02</span><span class="section-title">Joint control</span><span class="chevron" aria-hidden="true"></span></summary>
+<p id="notice" class="notice" role="status" aria-live="polite"></p>
+<div class="joint-layout">
+<figure class="home"><div class="home-canvas"><div class="home-diagram"><img src="/home-illustration.png" alt="HOME illustration labeled with base rotation, shoulder, elbow, wrist flexion, wrist rotation and gripper.">
+<svg class="joint-symbols" aria-hidden="true"><defs>
+<symbol id="rotate-clockwise" viewBox="0 0 24 24"><path d="M20 10a8 8 0 1 0-2 8M20 4v6h-6"/></symbol>
+<symbol id="rotate-counterclockwise" viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 2 8M4 4v6h6"/></symbol>
+<symbol id="gripper-jaws" viewBox="0 0 24 24"><path d="M8 5h8M8 5 4 15l3 4M16 5l4 10-3 4M10 5V2h4v3"/></symbol>
+</defs></svg>
+<button class="joint-hit active" data-joint="0" style="left:79.3%;top:67.6%;width:20.4%;height:6.9%" title="Base rotation" aria-pressed="true"><span class="sr-only">Select base rotation</span></button>
+<div class="joint-jog joint-jog-symbol" style="left:calc(99.7% + 8px);top:71.05%"><button data-jog-channel="0" data-direction="1" title="Rotate base clockwise, viewed from above (increase counts)" aria-label="Rotate base clockwise" disabled><svg aria-hidden="true"><use href="#rotate-clockwise"/></svg></button><button data-jog-channel="0" data-direction="-1" title="Rotate base counterclockwise, viewed from above (decrease counts)" aria-label="Rotate base counterclockwise" disabled><svg aria-hidden="true"><use href="#rotate-counterclockwise"/></svg></button></div>
+<button class="joint-hit" data-joint="1" style="left:79.9%;top:47.4%;width:17%;height:6.3%" title="Shoulder" aria-pressed="false"><span class="sr-only">Select shoulder</span></button>
+<div class="joint-jog" style="left:calc(96.9% + 8px);top:50.55%"><button data-jog-channel="1" data-direction="1" title="Increase shoulder counts" aria-label="Increase shoulder counts" disabled>↑</button><button data-jog-channel="1" data-direction="-1" title="Decrease shoulder counts" aria-label="Decrease shoulder counts" disabled>↓</button></div>
+<button class="joint-hit" data-joint="2" style="left:70.7%;top:8.4%;width:14.3%;height:6.2%" title="Elbow" aria-pressed="false"><span class="sr-only">Select elbow</span></button>
+<div class="joint-jog" style="left:calc(85% + 8px);top:11.5%"><button data-jog-channel="2" data-direction="-1" title="Raise elbow (decrease counts)" aria-label="Raise elbow (decrease counts)" disabled>↑</button><button data-jog-channel="2" data-direction="1" title="Lower elbow (increase counts)" aria-label="Lower elbow (increase counts)" disabled>↓</button></div>
+<button class="joint-hit" data-joint="3" style="left:2.5%;top:12%;width:18%;height:6.2%" title="Wrist flexion" aria-pressed="false"><span class="sr-only">Select wrist flexion</span></button>
+<div class="joint-jog" style="right:calc(97.5% + 8px);top:15.1%"><button data-jog-channel="3" data-direction="1" title="Increase wrist flexion counts" aria-label="Increase wrist flexion counts" disabled>↑</button><button data-jog-channel="3" data-direction="-1" title="Decrease wrist flexion counts" aria-label="Decrease wrist flexion counts" disabled>↓</button></div>
+<button class="joint-hit" data-joint="4" style="left:1.7%;top:31.6%;width:19.5%;height:6.2%" title="Wrist rotation" aria-pressed="false"><span class="sr-only">Select wrist rotation</span></button>
+<div class="joint-jog joint-jog-symbol" style="right:calc(98.3% + 8px);top:34.7%"><button data-jog-channel="4" data-direction="1" title="Rotate wrist clockwise, viewed from the gripper toward the arm (increase counts)" aria-label="Rotate wrist clockwise" disabled><svg aria-hidden="true"><use href="#rotate-clockwise"/></svg></button><button data-jog-channel="4" data-direction="-1" title="Rotate wrist counterclockwise, viewed from the gripper toward the arm (decrease counts)" aria-label="Rotate wrist counterclockwise" disabled><svg aria-hidden="true"><use href="#rotate-counterclockwise"/></svg></button></div>
+<button class="joint-hit" data-joint="5" style="left:3.7%;top:54.8%;width:13%;height:6.6%" title="Gripper" aria-pressed="false"><span class="sr-only">Select gripper</span></button>
+<div class="joint-jog joint-jog-symbol" style="right:calc(96.3% + 8px);top:58.1%"><button data-jog-channel="5" data-direction="-1" title="Decrease gripper counts" aria-label="Decrease gripper counts" disabled><svg aria-hidden="true"><use href="#gripper-jaws"/></svg><span class="jog-count">−</span></button><button data-jog-channel="5" data-direction="1" title="Increase gripper counts" aria-label="Increase gripper counts" disabled><svg aria-hidden="true"><use href="#gripper-jaws"/></svg><span class="jog-count">+</span></button></div>
+</div>
+<div class="image-actions" aria-label="Whole-arm poses"><button class="secondary" id="go-home" disabled>Go HOME</button><button class="secondary" id="go-park" disabled>Go PARK</button></div>
+</div></figure>
+<div class="control-panel">
+<div class="widget-heading"><h2>Selected: <span id="selected-name">Base rotation</span></h2><span class="widget-count" id="move-count" title="Manual moves this session">(0 moves)</span></div>
+<div class="current-row"><span class="current-label">Commanded</span><span class="current-value"><span id="commanded">—</span><small>counts</small></span></div>
+<div class="pose-values"><span>PARK<b id="park-value">330</b></span><span>HOME<b id="home-value">320</b></span></div>
+<div class="target-heading"><label for="target">Target</label><span>counts</span></div>
+<input type="range" id="slider" min="90" max="660" value="320" step="1" aria-label="Joint target; release to move" disabled>
+<div class="move-row"><input type="number" id="target" min="90" max="660" value="320" step="1" aria-label="Target count" disabled><button class="move" id="move" disabled>Move</button></div>
+<div class="limits-row"><label>Min<input id="min-limit" type="number" min="90" max="660" value="90" step="1" disabled></label><label>Max<input id="max-limit" type="number" min="90" max="660" value="660" step="1" disabled></label><button class="secondary" id="apply-limits" disabled>Apply</button></div>
+<div class="settings-row"><label for="step-size">Step size <small>counts</small><input id="step-size" type="number" min="1" step="1" value="10" disabled></label><label for="demo-speed">Demo speed <small>counts/s</small><input id="demo-speed" type="number" min="1" max="20" step="1" value="20" disabled></label></div>
+<div class="save-row"><button id="save-home" disabled>Save HOME</button><button id="save-park" disabled>Save PARK</button></div>
+<p class="feedback" id="feedback" role="status" aria-live="polite"></p>
+</div>
+<section class="control-panel demo-panel" aria-labelledby="demo-title">
+<div class="widget-heading"><h2 id="demo-title">Recorded Demo</h2><span class="widget-count" id="position-count">(0 positions)</span></div>
+<button class="add-position" id="add-position" disabled>＋ Add position</button>
+<ol class="demo-list" id="demo-list"><li class="empty-demo">Move the arm, then add a position.</li></ol>
+<div class="step-editor"><input id="step-name" aria-label="Selected position name" placeholder="Select a position" disabled><button class="icon-button" id="step-up" title="Move position up" aria-label="Move position up" disabled>↑</button><button class="icon-button" id="step-down" title="Move position down" aria-label="Move position down" disabled>↓</button><button class="icon-button" id="step-remove" title="Remove position" aria-label="Remove position" disabled>×</button></div>
+<div class="step-actions"><button class="secondary" id="replace-position" disabled>Replace with current</button><details id="counts-details"><summary>Counts</summary><p id="step-counts">Select a position.</p></details></div>
+<div class="playback"><button class="secondary" id="next-step" disabled>Next step</button><button class="primary" id="run-all" title="Starts at position 1 and runs through the sequence once" disabled>Run all once</button></div>
+<button class="pause" id="pause" hidden>Pause after step</button>
+<p class="demo-status" id="demo-status" role="status" aria-live="polite">No positions recorded</p>
+<div class="demo-footer"><button class="restart" id="restart" disabled>Restart</button><button class="secondary" id="save-demo" disabled>Save</button><button class="secondary" id="load-demo" disabled>Load</button></div>
+<input class="demo-name" id="demo-name" value="My demo" aria-label="Demo name" disabled>
+</section>
+</div>
+</details>
+<p class="connection" id="connection" role="status">Connecting…</p>
+</main>
+<dialog class="load-dialog" id="load-dialog" aria-labelledby="load-title">
+<h2 id="load-title">Load recorded demo</h2>
+<select id="saved-demos" aria-label="Saved demo"></select>
+<p id="load-feedback" class="feedback" role="status"></p>
+<div class="dialog-actions"><button class="secondary" id="load-cancel">Cancel</button><button class="primary" id="load-confirm" disabled>Load</button></div>
+</dialog>
+
+</body>
+</html>

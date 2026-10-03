@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="620" height="740" viewBox="0 0 620 740">
+  <title>Component illustrations for the confirmed robot arm wiring diagram</title>
+  <desc>Original SVG artwork: Mac laptop, bench power supply, black-cased metal gear servo and PCA9685 board. Shapes and pin placement are schematic.</desc>
+  <defs>
+    <linearGradient id="metal" x2="0" y2="1">
+      <stop stop-color="#e8edf2"/><stop offset="0.45" stop-color="#c1cad4"/><stop offset="1" stop-color="#8794a3"/>
+    </linearGradient>
+    <linearGradient id="screen" x2="0.7" y2="1">
+      <stop stop-color="#0f2945"/><stop offset="1" stop-color="#225681"/>
+    </linearGradient>
+    <linearGradient id="servo-housing" x2="0.3" y2="1">
+      <stop stop-color="#454a52"/><stop offset="0.45" stop-color="#30353d"/><stop offset="1" stop-color="#1e232a"/>
+    </linearGradient>
+    <linearGradient id="servo-brass">
+      <stop stop-color="#856126"/><stop offset="0.3" stop-color="#e3c679"/><stop offset="0.55" stop-color="#a47b35"/><stop offset="0.8" stop-color="#edcf86"/><stop offset="1" stop-color="#8d682b"/>
+    </linearGradient>
+    <pattern id="keyboard" width="18" height="14" patternUnits="userSpaceOnUse">
+      <rect x="2" y="2" width="14" height="10" rx="2" fill="#4b5563"/>
+    </pattern>
+    <pattern id="chip-pins" width="8" height="12" patternUnits="userSpaceOnUse">
+      <rect y="3" width="8" height="5" rx="1" fill="#c3ccd5"/>
+    </pattern>
+    <g id="mac-laptop">
+      <path d="M34 5H266Q274 5 274 13V126H26V13Q26 5 34 5Z" fill="url(#metal)" stroke="#536173" stroke-width="2"/>
+      <rect x="34" y="13" width="232" height="104" rx="3" fill="url(#screen)"/>
+      <circle cx="150" cy="9" r="1.6" fill="#26394e"/>
+      <rect x="45" y="23" width="210" height="82" rx="4" fill="#f7fafc"/>
+      <path d="M45 29Q45 23 51 23H249Q255 23 255 29V40H45Z" fill="#dbe7f3"/>
+      <circle cx="53" cy="31" r="2.5" fill="#e87979"/><circle cx="62" cy="31" r="2.5" fill="#efc56c"/><circle cx="71" cy="31" r="2.5" fill="#73b895"/>
+      <text x="86" y="34" fill="#334155" font-family="Arial, sans-serif" font-size="7">raspberrypi.local:8765</text>
+      <text x="56" y="54" fill="#1e3a5f" font-family="Arial, sans-serif" font-weight="bold" font-size="9">Robot arm control</text>
+      <path d="M61 71H157M61 83H157M61 95H157" stroke="#cedae8" stroke-width="3"/>
+      <circle cx="107" cy="71" r="4" fill="#3476ad"/><circle cx="133" cy="83" r="4" fill="#3476ad"/><circle cx="90" cy="95" r="4" fill="#3476ad"/>
+      <rect x="180" y="60" width="62" height="38" rx="4" fill="#e5edf6"/>
+      <path d="M191 91H231M218 88L211 73L196 67L191 78" fill="none" stroke="#486b91" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M26 125H274L300 176Q300 181 291 183H9Q0 181 0 176Z" fill="url(#metal)" stroke="#536173" stroke-width="2"/>
+      <path d="M44 134H256L267 158H33Z" fill="url(#keyboard)" stroke="#8b99a8"/>
+      <path d="M120 163H180L185 176H115Z" fill="#aeb9c5" stroke="#7b8a9b"/>
+      <path d="M0 177H300M124 183H176" fill="none" stroke="#64748b" stroke-width="2"/>
+    </g>
+    <g id="bench-supply">
+      <path d="M9 1H175L190 12V111H9Z" fill="#7f8fa1" stroke="#485769" stroke-width="2"/>
+      <rect x="1" y="12" width="174" height="100" rx="6" fill="#e4eaf0" stroke="#526276" stroke-width="2"/>
+      <rect x="11" y="25" width="99" height="37" rx="4" fill="#142a34" stroke="#718294"/>
+      <text x="20" y="40" fill="#8ccbc9" font-size="10" font-family="monospace">V · · ·</text>
+      <text x="20" y="55" fill="#8ccbc9" font-size="10" font-family="monospace">A · · ·</text>
+      <circle cx="134" cy="37" r="14" fill="#bdc8d3" stroke="#566779" stroke-width="2"/>
+      <path d="M134 37L142 29" stroke="#42556b" stroke-width="3"/>
+      <circle cx="134" cy="80" r="14" fill="#bdc8d3" stroke="#566779" stroke-width="2"/>
+      <path d="M134 80L134 69" stroke="#42556b" stroke-width="3"/>
+      <rect x="16" y="80" width="18" height="18" rx="3" fill="#60738a"/>
+      <path d="M25 83V91M21 85A6 6 0 1 0 29 85" fill="none" stroke="#eff6ff" stroke-width="1.5"/>
+      <path d="M46 82H104M46 88H104M46 94H104" stroke="#9facbb" stroke-width="2"/>
+      <circle cx="180" cy="50" r="9" fill="#bd3c40" stroke="#702c35" stroke-width="2"/>
+      <circle cx="180" cy="80" r="9" fill="#384656" stroke="#1e293b" stroke-width="2"/>
+    </g>
+    <g id="metal-servo">
+      <path d="M0 40H35Q49 40 65 59" fill="none" stroke="#bd813a" stroke-width="3"/>
+      <path d="M0 60H65" fill="none" stroke="#a84845" stroke-width="3"/>
+      <path d="M0 80H35Q49 80 65 68" fill="none" stroke="#67483f" stroke-width="3"/>
+      <path d="M65 36L88 21H176L153 36Z" fill="#434850" stroke="#20252c" stroke-width="1.5"/>
+      <path d="M153 36L176 21V74L153 89Z" fill="#1f242b" stroke="#151a20" stroke-width="1.5"/>
+      <path d="M65 36H153V89H65Z" fill="url(#servo-housing)" stroke="#151a20" stroke-width="1.5"/>
+      <path d="M55 37H73V53H54V41Q54 37 55 37Z M171 22L180 18V33L171 39Z" fill="#282e36" stroke="#151a20" stroke-width="1.5"/>
+      <circle cx="61" cy="44" r="3" fill="#fff"/><ellipse cx="177" cy="28" rx="2" ry="3" fill="#fff"/>
+      <path d="M68 39H150M66 79H153L176 65" fill="none" stroke="#56606b" stroke-width="1.2"/>
+      <rect x="81" y="46" width="59" height="22" rx="2" fill="#23272e" stroke="#b3a475"/>
+      <rect x="85" y="49" width="51" height="10" rx="1" fill="#dbcc98"/>
+      <text x="110" y="57" text-anchor="middle" fill="#33343a" font-family="Arial, sans-serif" font-size="8" font-weight="bold">SERVO</text>
+      <text x="110" y="65" text-anchor="middle" fill="#c6b990" font-family="Arial, sans-serif" font-size="5">METAL GEAR</text>
+      <ellipse cx="140" cy="24" rx="22" ry="10" fill="#1c2128" stroke="#151a20" stroke-width="1.5"/>
+      <ellipse cx="140" cy="20" rx="21" ry="9" fill="#3b4149" stroke="#555d66"/>
+      <ellipse cx="140" cy="17" rx="15" ry="6" fill="#242a31" stroke="#151a20"/>
+      <path d="M132 6V17C132 22 148 22 148 17V6Z" fill="url(#servo-brass)" stroke="#8a692e"/>
+      <path d="M134 8V19M137 9V20M141 9V20M145 8V19" fill="none" stroke="#6e5123" stroke-width="0.8"/>
+      <ellipse cx="140" cy="6" rx="8" ry="4" fill="#e4c987" stroke="#8a692e"/>
+      <ellipse cx="140" cy="6" rx="3.5" ry="1.8" fill="#6d532d" stroke="#ad8742"/>
+      <circle cx="70" cy="84" r="1.7" fill="#a0a8b2"/><circle cx="148" cy="84" r="1.7" fill="#a0a8b2"/>
+    </g>
+    <g id="pca-board">
+      <rect x="2" y="1" width="246" height="668" rx="13" fill="#147a56" stroke="#0d513c" stroke-width="3"/>
+      <path d="M10 164H238M10 284H238M10 648H238" stroke="#b3e0cc" stroke-opacity="0.35" stroke-width="1.5"/>
+      <g fill="#f8fafc" stroke="#a5b8ad" stroke-width="2">
+        <circle cx="17" cy="17" r="8"/><circle cx="232" cy="17" r="8"/><circle cx="17" cy="652" r="8"/><circle cx="232" cy="652" r="8"/>
+      </g>
+      <path d="M13 55H99V322 M13 83H86V333 M13 111H74V344 M13 139H62V355 M133 327H227V55 M133 347H213V165 M133 367H202V275 M133 387H189V385 M133 407H178V495 M133 427H166V605" fill="none" stroke="#5ccc9c" stroke-opacity="0.75" stroke-width="2"/>
+      <rect x="65" y="310" width="16" height="144" fill="url(#chip-pins)"/>
+      <rect x="137" y="310" width="16" height="144" fill="url(#chip-pins)"/>
+      <rect x="78" y="304" width="62" height="157" rx="4" fill="#192d29" stroke="#0c231d" stroke-width="2"/>
+      <circle cx="88" cy="318" r="3" fill="#aabbb2"/>
+      <text transform="translate(114 432) rotate(-90)" fill="#d6e7df" font-family="Arial, sans-serif" font-size="12">PCA9685</text>
+      <rect x="3" y="193" width="66" height="69" rx="4" fill="#5bb482" stroke="#d1f0dd" stroke-width="2"/>
+      <circle cx="51" cy="210" r="10" fill="#aebdb1" stroke="#365443" stroke-width="2"/>
+      <circle cx="51" cy="238" r="10" fill="#aebdb1" stroke="#365443" stroke-width="2"/>
+      <path d="M46 210H56M46 238H56" stroke="#365443" stroke-width="2"/>
+      <g fill="#15362c" stroke="#6eaa8e">
+        <rect x="236" y="40" width="12" height="70" rx="3"/><rect x="236" y="150" width="12" height="70" rx="3"/>
+        <rect x="236" y="260" width="12" height="70" rx="3"/><rect x="236" y="370" width="12" height="70" rx="3"/>
+        <rect x="236" y="480" width="12" height="70" rx="3"/><rect x="236" y="590" width="12" height="70" rx="3"/>
+      </g>
+      <text x="22" y="510" fill="#deefe7" font-family="Arial, sans-serif" font-size="14" font-weight="bold">16-channel PWM</text>
+      <text x="22" y="535" fill="#bbdfce" font-family="Arial, sans-serif" font-size="12">CH0–CH5 connected</text>
+      <text x="22" y="559" fill="#bbdfce" font-family="Arial, sans-serif" font-size="12">I²C address 0x40</text>
+    </g>
+  </defs>
+  <rect width="620" height="740" fill="#fff"/>
+  <use href="#mac-laptop" x="20" y="20"/>
+  <use href="#bench-supply" x="60" y="260"/>
+  <use href="#metal-servo" x="60" y="440"/>
+  <use href="#pca-board" x="350" y="20"/>
+</svg>

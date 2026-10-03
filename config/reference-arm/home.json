@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-01T15:20:17.118298+00:00",
+  "name": "HOME",
+  "counts": {
+    "0": 320,
+    "1": 427,
+    "2": 403,
+    "3": 220,
+    "4": 480,
+    "5": 650
+  },
+  "units": "PCA9685_counts",
+  "nominal_frequency_hz": 60,
+  "observed": true,
+  "provenance": "User clicked Save HOME after observing the complete pose and checking clearance/support in the manual app. 2026-10-01T15:20:17.103Z",
+  "scope": "commissioning",
+  "validated_limits": false,
+  "position_feedback": false
+}

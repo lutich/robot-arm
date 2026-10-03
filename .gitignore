@@ -1,0 +1,11 @@
+.pi.json
+.env
+.env.*
+!.env.example
+.local/
+.venv*/
+venv/
+__pycache__/
+*.py[cod]
+.DS_Store
+artifacts/
