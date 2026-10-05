@@ -156,10 +156,10 @@ class DemoTests(unittest.TestCase):
             self.session.go_pose(name='OTHER')
 
     def test_jog_settings_are_integer_atomic_and_do_not_initialize_or_move(self):
-        initial = dict(step_size=10, demo_speed=20, demo_speed_max=20)
+        initial = dict(step_size=10, demo_speed=20, demo_speed_max=100)
         self.assertEqual(self.session.state()['settings'], initial)
         before = dict(self.driver.outputs)
-        for step, speed in ((0,20), (True,20), (2.5,20), (10,0), (10,21), (10,True), (10,5.5)):
+        for step, speed in ((0,20), (True,20), (2.5,20), (10,0), (10,101), (10,True), (10,5.5)):
             with self.assertRaises(ValueError):
                 self.session.set_settings(step_size=step, demo_speed=speed)
             self.assertEqual(self.session.state()['settings'], initial)

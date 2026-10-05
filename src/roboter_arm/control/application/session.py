@@ -17,6 +17,7 @@ PARK = {0:330, 1:540, 2:580, 3:195, 4:480, 5:650}
 HOME = {0:320, 1:427, 2:403, 3:220, 4:480, 5:650}
 INACTIVITY_WARNING_SECONDS = 600
 SPEED = 20  # Command counts/second; not measured physical velocity.
+DEMO_SPEED_MAX = 100  # Demo playback cap; manual moves and PARK/HOME keep SPEED.
 
 
 class Session:
@@ -83,7 +84,7 @@ class Session:
                     high=self.ranges.get(c,(low,high))[1], historical_low=low, historical_high=high, startup=STARTUP[c],
                     old_home=OLD_HOME[c], park=self.poses['PARK'][c], home=self.poses['HOME'][c], allowed=c in self.channels) for c, (name, low, high) in JOINTS.items()],
                 speed=SPEED, demo=self._demo_state(),
-                settings=dict(step_size=self.step_size, demo_speed=self.demo_speed, demo_speed_max=SPEED))
+                settings=dict(step_size=self.step_size, demo_speed=self.demo_speed, demo_speed_max=DEMO_SPEED_MAX))
 
     def _demo_state(self):
         positions = []
@@ -139,8 +140,8 @@ class Session:
             self._idle()
             if type(step_size) is not int or step_size < 1:
                 raise ValueError('Step size must be a positive integer count')
-            if type(demo_speed) is not int or not 1 <= demo_speed <= SPEED:
-                raise ValueError(f'Demo speed must be integer counts/s from 1 to {SPEED}')
+            if type(demo_speed) is not int or not 1 <= demo_speed <= DEMO_SPEED_MAX:
+                raise ValueError(f'Demo speed must be integer counts/s from 1 to {DEMO_SPEED_MAX}')
             self.step_size, self.demo_speed = step_size, demo_speed
 
     def jog(self, *, channel, direction):

@@ -79,8 +79,8 @@ When commands are unknown in that flow, the first `move` needs
 acknowledgment must come from the attending operator.
 
 `state.settings` reports `step_size` (default 10 positive integer counts),
-`demo_speed` (default 20 integer counts/s) and `demo_speed_max` (20). Demo speed
-may be set from 1 to 20 and applies to Next, Run and Resume, including deadline
+`demo_speed` (default 20 integer counts/s) and `demo_speed_max` (100). Demo speed
+may be set from 1 to 100 and applies to Next, Run and Resume, including deadline
 preflight and per-step timeout calculations. Manual jog/moves and named
 PARK/HOME transitions retain their existing 20-counts/s commanded speed.
 Settings apply to the running app; saving/loading a Demo retains its positions

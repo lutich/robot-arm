@@ -56,7 +56,7 @@ Historical ranges are commissioning guards, not collision avoidance.
 
 Demo capture requires all six settled commands. Next plays one position; Run
 plays the sequence once; Pause finishes the current step and holds; Resume
-continues. Demo speed is 1–20 counts/s. Each segment needs observed clearance;
+continues. Demo speed is 1–100 counts/s. Each segment needs observed clearance;
 valid endpoints alone do not validate the path. Save writes a new immutable
 record; Load does not move or restore execution progress.
 

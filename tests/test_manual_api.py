@@ -81,9 +81,9 @@ class ManualAPITests(unittest.TestCase):
     def test_settings_and_relative_jog_use_authoritative_backend_values(self):
         self.action('settings', {'step_size':3, 'demo_speed':5})
         state = self.request('GET', '/api/state')[1]
-        self.assertEqual(state['settings'], dict(step_size=3, demo_speed=5, demo_speed_max=20))
+        self.assertEqual(state['settings'], dict(step_size=3, demo_speed=5, demo_speed_max=100))
         self.assertFalse(state['prepared'])
-        self.assertEqual(self.request('POST', '/api/settings', {'step_size':4, 'demo_speed':21})[0], 400)
+        self.assertEqual(self.request('POST', '/api/settings', {'step_size':4, 'demo_speed':101})[0], 400)
         self.assertEqual(self.request('POST', '/api/jog', {'channel':4, 'direction':1})[0], 400)
         self.action('power_on', {'park_confirmed':True})
         self.action('jog', {'channel':4, 'direction':1})
