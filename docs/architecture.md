@@ -100,12 +100,23 @@ enforces these rules.
 
 Optional camera access stays in `control`: `domain/camera.py` defines settings
 policy, frame values and the source port; `application/camera.py` owns one
-worker and an atomic latest RGB/depth pair; `infrastructure/oak_camera.py`
-lazily loads the pinned DepthAI SDK and time-matches aligned depth with RGB.
+supervisor thread and an atomic latest RGB/depth pair;
+`infrastructure/camera_process.py` implements the source port through a spawned
+child and a private local socket. The child constructs `OakCamera`; the parent
+never opens USB or loads DepthAI. `infrastructure/oak_camera.py` lazily loads
+the pinned SDK and time-matches aligned depth with RGB.
 `infrastructure/depth_images.py` encodes lossless metric PNGs and fixed-scale
 colour previews once per producer frame. `presentation/camera_api.py` maps
 camera errors and serves JPEG, PNG, live previews and paired capture through
-the existing app. SDK calls and image encoding happen only in the camera worker.
+the existing app. SDK calls and image encoding happen only in the child process.
+One request/reply is in flight, without a frame backlog. Parent I/O uses an
+overall five-second deadline, including incomplete transfers; returned sample
+ages include transport time. Failures go through the existing camera-service
+cache invalidation and reconnect path, with a new process and run ID. Shutdown
+allows three seconds for native cleanup before terminate/kill escalation.
+Spawn avoids inheriting prepared controller handles or locks. The child receives
+no Session or servo driver, and camera-enabled service units let the parent
+handle SIGTERM first with `KillMode=mixed`.
 
 Capture and live previews are async exceptions that only inspect the short-lived cache
 lock and await new frames. They do not call Session or USB I/O. Settings

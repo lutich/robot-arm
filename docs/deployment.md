@@ -129,6 +129,13 @@ Stopping first ensures the changed startup command takes effect. The camera
 choice persists across service restarts; repeat `--camera oak` when reinstalling.
 Installing without it restores the default camera-disabled command.
 
+Camera-enabled units use `KillMode=mixed`: systemd first signals the parent app,
+which stops the arm and closes its separate camera process; systemd retains
+whole-group forced cleanup after the 15-second stop budget. After upgrading
+from the thread-based camera worker, repeat the stop/install commands above
+to update the existing unit as well as the deployed Python files. Verify fresh
+RGB/depth, a new camera run ID and clean service shutdown with servo power off.
+
 Open http://raspberrypi.local:8765/ (or the Pi's IP address) from any device on
 the Pi's Wi-Fi or Ethernet network; API state is at `/api/state`. Substitute your
 configured `app_port`. The app starts unprepared/unarmed: it does not initialize

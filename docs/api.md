@@ -194,14 +194,29 @@ deadline, and 500 for unexpected camera handler failures. Camera errors do not
 invoke Session Stop. The worker retries connection after failures and assigns
 a new run ID and default settings after reconnect; old frame cursors/settings
 versions then conflict. No usable frame for five seconds triggers reconnection.
-The worker is a thread in the existing process; native SDK process failure
-is not isolated by a separate camera process.
+DepthAI and image encoding run in a spawned camera process behind the existing
+camera service. One private local socket carries one request/reply at a time;
+the latest pair remains cached in the app. Calls have a five-second deadline,
+including partial replies. Frame ages include IPC transport time. A worker
+exit or timeout invalidates the cache and clears pending camera settings;
+the service retries with a new worker and camera run ID. Session and Stop stay
+in the parent process. Camera loss does not automatically stop an attended
+movement; a future calibration executor must enforce its observation policy.
+
+Shutdown asks the child to close the pipeline/device, waits up to three seconds,
+then escalates through terminate and kill with half-second joins. Camera-enabled
+service units use `KillMode=mixed` so the parent handles the initial service
+stop and closes its child within the existing 15-second service budget. Reinstall
+an existing camera-enabled unit after deploying this change; see
+[deployment](deployment.md#4-setup-and-the-app-service).
 
 The Camera accordion provides capability-driven settings, requested/frame
 readings, View/Pause, fresh Capture and JPEG Download. View starts on demand;
 Pause closes that viewer's stream while acquisition continues. Camera feedback
 and request state are independent of robot controls. Metric tracking,
-settling/optical checks and calibration evidence are later work.
+settling/optical checks and calibration evidence are later work. Follow the
+[camera measurement guide](camera-calibration-guide.md) for scene preparation
+and the measurement acceptance procedure.
 
 ## HOME and PARK persistence
 

@@ -269,8 +269,8 @@ def main():
                               ranges=ranges, seconds=args.session_seconds, max_moves=args.max_moves)
     except ValueError as error:
         parser.error(str(error))
-    from roboter_arm.control.infrastructure.oak_camera import OakCamera
-    camera = CameraService(session, OakCamera() if args.camera == 'oak' else None)
+    from roboter_arm.control.infrastructure.camera_process import CameraProcess
+    camera = CameraService(session, CameraProcess() if args.camera == 'oak' else None)
     server = Server(session, args.port, args.host, camera=camera)
     finished = threading.Event()
     def interrupt(_signum, _frame):

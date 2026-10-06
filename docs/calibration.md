@@ -1,5 +1,9 @@
 # Calibration and reference data
 
+For the camera approach, follow the [step-by-step measurement guide](camera-calibration-guide.md).
+It starts with servo power off and distinguishes current image access from the
+metric tracker that still needs implementing.
+
 `config/reference-arm/` retains the historical guards and selected physical
 observations used by the imported application. It is reference evidence for
 one arm. There are no measured general joint limits, angle zeros, geometry or

@@ -41,7 +41,7 @@ class CameraService:
     def close(self):
         self.finished.set()
         if self.thread is not None:
-            # Native SDK cleanup must finish before Python starts finalizing.
+            # The source owns camera cleanup, including its bounded process shutdown.
             self.thread.join()
 
     def _fresh(self):

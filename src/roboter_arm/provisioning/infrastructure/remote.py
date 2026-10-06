@@ -24,9 +24,11 @@ def service_unit(connection, *, camera=None):
                         '--port', str(connection.app_port), '--host', '0.0.0.0'])
     if camera is not None:
         command += ' --camera ' + camera
+    # Let the app close its camera worker before systemd escalates to the whole group.
+    kill_mode = 'KillMode=mixed\n' if camera is not None else ''
     # Restart=no keeps a crash or an unconfirmed PWM-off visible in the service status.
     return ('[Unit]\nDescription=Robot arm control app\n\n'
-            f'[Service]\nWorkingDirectory={root}\nExecStart={command}\nRestart=no\nTimeoutStopSec=15\n\n'
+            f'[Service]\nWorkingDirectory={root}\nExecStart={command}\nRestart=no\n{kill_mode}TimeoutStopSec=15\n\n'
             '[Install]\nWantedBy=default.target\n')
 
 

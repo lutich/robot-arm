@@ -153,7 +153,8 @@ class ConnectionTests(unittest.TestCase):
         default = service_unit(Connection())
         camera = service_unit(Connection(), camera='oak')
         self.assertNotIn('--camera', default)
-        self.assertEqual(camera, default.replace('--host 0.0.0.0', '--host 0.0.0.0 --camera oak'))
+        self.assertEqual(camera, default.replace('--host 0.0.0.0', '--host 0.0.0.0 --camera oak')
+                         .replace('TimeoutStopSec=15', 'KillMode=mixed\nTimeoutStopSec=15'))
         for value in ('usb', 'oak; reboot', True):
             with self.subTest(camera=value), self.assertRaises(ValueError):
                 service_unit(Connection(), camera=value)
