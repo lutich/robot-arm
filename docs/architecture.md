@@ -110,7 +110,7 @@ colour previews once per producer frame. `presentation/camera_api.py` maps
 camera errors and serves JPEG, PNG, live previews and paired capture through
 the existing app. SDK calls and image encoding happen only in the child process.
 One request/reply is in flight, without a frame backlog. Parent I/O uses an
-overall five-second deadline, including incomplete transfers; returned sample
+eight-second startup or five-second read/control deadline, including incomplete transfers; returned sample
 ages include transport time. Failures go through the existing camera-service
 cache invalidation and reconnect path, with a new process and run ID. Shutdown
 allows three seconds for native cleanup before terminate/kill escalation.

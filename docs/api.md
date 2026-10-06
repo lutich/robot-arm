@@ -196,8 +196,9 @@ a new run ID and default settings after reconnect; old frame cursors/settings
 versions then conflict. No usable frame for five seconds triggers reconnection.
 DepthAI and image encoding run in a spawned camera process behind the existing
 camera service. One private local socket carries one request/reply at a time;
-the latest pair remains cached in the app. Calls have a five-second deadline,
-including partial replies. Frame ages include IPC transport time. A worker
+the latest pair remains cached in the app. Startup has an eight-second deadline;
+read/control calls have five seconds, including partial replies. Frame ages
+include IPC transport time. A worker
 exit or timeout invalidates the cache and clears pending camera settings;
 the service retries with a new worker and camera run ID. Session and Stop stay
 in the parent process. Camera loss does not automatically stop an attended

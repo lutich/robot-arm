@@ -69,8 +69,9 @@ def _worker(channel, factory):
 class CameraProcess:
     kind = 'oak'
 
-    def __init__(self, factory=OakCamera, *, timeout=5, close_timeout=3):
+    def __init__(self, factory=OakCamera, *, timeout=5, open_timeout=8, close_timeout=3):
         self.factory, self.timeout, self.close_timeout = factory, timeout, close_timeout
+        self.open_timeout = open_timeout
         self.process = self.channel = None
 
     def open(self):
@@ -91,7 +92,7 @@ class CameraProcess:
         return self._call('open')[0]
 
     def _call(self, method, *args):
-        deadline = time.monotonic()+self.timeout
+        deadline = time.monotonic()+(self.open_timeout if method == 'open' else self.timeout)
         try:
             _send(self.channel, (method, args), deadline)
             ok, result, sampled_at = _receive(self.channel, deadline)

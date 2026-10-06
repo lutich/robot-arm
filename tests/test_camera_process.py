@@ -119,7 +119,8 @@ class CameraProcessTests(unittest.TestCase):
                 source = self.source(hang=method)
                 if method != 'open':
                     source.open()
-                source.timeout = .3 if method != 'open' else 1
+                source.timeout = .3
+                source.open_timeout = 1
                 started = time.monotonic()
                 with self.assertRaisesRegex(CameraUnavailable, f'deadline exceeded during {method}'):
                     getattr(source, method)(*([{'anti_banding':'60hz'}] if method == 'apply' else []))
