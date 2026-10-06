@@ -17,10 +17,12 @@ from starlette.exceptions import HTTPException
 import uvicorn
 
 from roboter_arm.control.application.session import Session, STARTUP, OLD_HOME, PARK, HOME, SPEED
+from roboter_arm.control.application.camera import CameraService
 from roboter_arm.control.infrastructure.demo_store import DemoStore
 from roboter_arm.control.infrastructure.drivers import PreviewDriver, HardwareDriver
 from roboter_arm.control.infrastructure.pose_store import PoseStore
 from roboter_arm.control.presentation import api_models as body
+from roboter_arm.control.presentation.camera_api import register as register_camera
 from roboter_arm.shared.joints import JOINTS
 from roboter_arm.shared.paths import ROOT
 
@@ -39,7 +41,8 @@ TAGS = [{'name':'State', 'description':'Read-only status; polling it never prepa
         {'name':'Demo', 'description':'Record, edit, play back, save and load demo positions.'},
         {'name':'Bounded tests', 'description':'Arm a session restricted to fewer joints or narrowed ranges '
          '(manual_control.py --channels/--range), where power_on refuses. No automatic PARK/HOME move; '
-         'the first move needs first_clear: true. Not used by the page.'}]
+         'the first move needs first_clear: true. Not used by the page.'},
+        {'name':'Camera', 'description':'Read camera frames and submit supported settings; no servo commands.'}]
 # path: (Session method, request body, tag, summary). Stop is separate; see create_app.
 ACTIONS = {'power_on':('power_on', body.PowerOn, 'Power', 'Enable PARK, then move to HOME; needs fresh physical PARK/readiness'),
            'power_off':('power_off', body.Empty, 'Power', 'Return known commands to PARK, then disable all outputs'),
@@ -141,10 +144,11 @@ def asset(name, media_type):
     return endpoint
 
 
-def create_app(session):
+def create_app(session, camera=None):
     app = FastAPI(title='Robot arm control API', docs_url='/docs', openapi_url='/openapi.json',
                   redoc_url=None, redirect_slashes=False, openapi_tags=TAGS)
     app.state.session = session
+    app.state.camera = camera if camera is not None else CameraService(session)
     # Stop has its own threads, so it never queues behind requests waiting on the session lock.
     app.state.stop_threads = anyio.CapacityLimiter(2)
     app.add_middleware(Guard)
@@ -176,6 +180,7 @@ def create_app(session):
     for path, (method, model, tag, summary) in ACTIONS.items():
         app.add_api_route(f'/api/{path}', action(method, model), methods=['POST'], tags=[tag],
                           summary=summary, responses=RESPONSES)
+    register_camera(app, app.state.camera)
     return app
 
 
@@ -199,8 +204,8 @@ class Uvicorn(uvicorn.Server):
 
 class Server:
     """Uvicorn on a socket bound at construction, so the port is known before serving starts."""
-    def __init__(self, session, port, host='127.0.0.1'):
-        self.app = create_app(session)
+    def __init__(self, session, port, host='127.0.0.1', *, camera=None):
+        self.app = create_app(session, camera)
         self.socket = socket.socket()
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.bind((host, port))
@@ -244,6 +249,7 @@ def main():
     parser.add_argument('--channels', type=int, nargs='+', help='Explicit hardware-session channel set')
     parser.add_argument('--port', type=int, default=8765)
     parser.add_argument('--host', default='127.0.0.1', help='Listen address; 0.0.0.0 serves every network interface')
+    parser.add_argument('--camera', choices=['oak'], help='Opt in to OAK-D Lite RGB acquisition; requires the pinned camera runtime')
     parser.add_argument('--range', dest='ranges', action='append', default=[], metavar='CHANNEL:LOW:HIGH')
     parser.add_argument('--session-seconds', type=int, help='Optional bounded-test duration, at most 600 seconds')
     parser.add_argument('--max-moves', type=int, help='Optional bounded-test target count, at most 60')
@@ -263,7 +269,9 @@ def main():
                               ranges=ranges, seconds=args.session_seconds, max_moves=args.max_moves)
     except ValueError as error:
         parser.error(str(error))
-    server = Server(session, args.port, args.host)
+    from roboter_arm.control.infrastructure.oak_camera import OakCamera
+    camera = CameraService(session, OakCamera() if args.camera == 'oak' else None)
+    server = Server(session, args.port, args.host, camera=camera)
     finished = threading.Event()
     def interrupt(_signum, _frame):
         raise KeyboardInterrupt()
@@ -276,13 +284,19 @@ def main():
     threading.Thread(target=monitor, daemon=True).start()
     print(f'{"HARDWARE commissioning" if args.hardware else "PREVIEW, no hardware"}: http://{args.host}:{args.port}', flush=True)
     print('No startup PWM. Direct stop disables holding torque; keep support and power switch ready.', flush=True)
+    if args.camera:
+        print('OAK camera enabled; servo driver mode is independent. Metric calibration is not ready.', flush=True)
     try:
+        camera.start()
         server.run()
     except KeyboardInterrupt:
         pass
     finally:
         finished.set()
-        stopped = session.close()
-        server.socket.close()
+        try:
+            stopped = session.close()
+        finally:
+            camera.close()
+            server.socket.close()
         if not stopped:
             raise SystemExit('Output disable/readback failed; switch servo power OFF')

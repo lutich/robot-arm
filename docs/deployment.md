@@ -116,6 +116,19 @@ channels, listening on every interface at `app_port`, and starts at boot.
 Re-running install is safe. Review [operations](operations.md) before using it
 with servo power.
 
+Camera acquisition is disabled unless installation explicitly includes
+`--camera oak`. After installing the [camera add-on](../runtime/README.md#optional-oak-camera-add-on),
+with servo power off and the arm supported, install the camera-enabled unit:
+
+```sh
+uv run --locked python scripts/service.py stop
+uv run --locked python scripts/service.py install --camera oak
+```
+
+Stopping first ensures the changed startup command takes effect. The camera
+choice persists across service restarts; repeat `--camera oak` when reinstalling.
+Installing without it restores the default camera-disabled command.
+
 Open http://raspberrypi.local:8765/ (or the Pi's IP address) from any device on
 the Pi's Wi-Fi or Ethernet network; API state is at `/api/state`. Substitute your
 configured `app_port`. The app starts unprepared/unarmed: it does not initialize

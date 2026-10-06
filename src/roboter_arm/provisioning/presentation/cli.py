@@ -29,12 +29,15 @@ def main(argv=None):
     service = commands.add_parser('service', help='Install, start, stop, restart or show the Pi app service')
     service.add_argument('service_action', choices=('install', 'start', 'stop', 'restart', 'status'),
                          help='install enables it at boot (sudo once); stop and restart switch PWM off')
+    service.add_argument('--camera', choices=('oak',), help='Opt in to OAK acquisition with service install')
     check = commands.add_parser('check', help='Read-only connectivity, deployed files and runtime inspection')
     check.add_argument('--app', action='store_true', help='Also GET app state and verify served frontend assets')
     check.add_argument('--snapshot', type=Path, help='Save remote file hashes for review; does not require deployment to match')
     for command in (connect, setup, wifi, deploy, service, check):
         command.add_argument('--config', type=Path, default=argparse.SUPPRESS, help='Override connection JSON')
     args = parser.parse_args(argv)
+    if args.action == 'service' and args.camera and args.service_action != 'install':
+        parser.error('--camera is only supported with service install')
     try:
         connection = load_connection(args.config)
         if args.action == 'setup-connection':
@@ -48,7 +51,7 @@ def main(argv=None):
             result = ssh(connection, 'python3 -', deployment(connection, args.files, baseline), timeout=180)
         elif args.action == 'service':
             if args.service_action == 'install':
-                result = ssh(connection, INSTALL_COMMAND, install_payload(connection))
+                result = ssh(connection, INSTALL_COMMAND, install_payload(connection, camera=args.camera))
             else:
                 result = ssh(connection, service_command(args.service_action))
             if result.returncode == 0 and args.service_action != 'stop':

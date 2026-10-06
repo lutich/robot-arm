@@ -1,7 +1,8 @@
 # Commissioning backend and browser API
 
 The local app uses one Python backend and a plain HTML/CSS/JavaScript frontend.
-There are no new runtime dependencies. Paths below are under
+Preview needs no camera dependency; OAK access uses the optional pinned
+[camera runtime add-on](../runtime/README.md#optional-oak-camera-add-on). Paths below are under
 `src/roboter_arm/control/`; `scripts/manual_control.py` launches the app.
 `presentation/http_api.py` contains the HTTP adapter.
 `application/session.py` contains the authoritative `Session` application service;
@@ -25,7 +26,7 @@ There is no authentication; run it only on a network you control. Every request
 needs a `Host` that is an IP address, a name without dots or a `.local` name, and
 every POST needs `Origin` equal to `http://<Host>` and `Content-Type: application/json`.
 This keeps other websites open in the same browser from sending actions. Requests and
-responses are JSON. Success is `{"ok": true, "result": ...}`; rejected requests return
+action responses are JSON. Success is `{"ok": true, "result": ...}`; rejected requests return
 an error status (see below) with `{"error": ...}`.
 An accepted motion starts a backend worker; HTTP success means accepted, not
 that the arm reached the target. Poll status to observe completion or failure.
@@ -87,6 +88,120 @@ Settings apply to the running app; saving/loading a Demo retains its positions
 without replacing these settings. Arrow signs refer to command counts, not
 verified physical directions. Unknown commands or targets beyond current
 bounds are rejected without clamping or an initial positioning move.
+
+## Optional camera access
+
+The camera is disabled by default. Install the add-on explicitly on the Pi,
+connect an OAK-D Lite through USB 3 (use a powered hub if needed), and opt in:
+
+```sh
+.venv-runtime/bin/python scripts/manual_control.py --camera oak --host 0.0.0.0
+```
+
+This command keeps the servo driver in preview. First check the camera with
+servo power off. `--hardware --channels 0 1 2 3 4 5` separately permits attended
+servo preparation through the existing controls. The Pi app service also needs
+an explicit `service.py install --camera oak`; see [deployment](deployment.md).
+Avoid running two app instances on the same port or camera.
+
+The adapter supports OAK-D Lite on RVC2: RGB CAM_A / IMX214 (AF or fixed focus)
+and stereo CAM_B/CAM_C / OV7251. The fixed combined profile is 1280 × 720 at
+5 fps. RGB is cropped, undistorted NV12 encoded on the OAK as MJPEG at quality
+85. The stereo pair uses native 640 × 480 inputs; depth is aligned to the
+actual RGB output and resized to its pixel grid. This does not increase the
+stereo sensors' resolution. Resolution, encoder and stereo settings are fixed.
+
+| Route | Result |
+| --- | --- |
+| `GET /api/camera/status` | Camera availability, run ID, requested revision/groups, capabilities, latest frame readbacks/age, pending/locked state and last error. No camera or servo initialization. |
+| `POST /api/camera/settings` | Queue supported changed groups; omitted groups stay unchanged. |
+| `GET /api/camera/snapshot.jpg` | Fresh JPEG with exact matching metadata in the JSON `X-Camera-Frame` header. |
+| `GET /api/camera/stream.mjpg` | MJPEG from the shared latest-frame cache. Each part has `Content-Length` and `X-Camera-Frame`. Slow viewers skip frames. |
+| `GET /api/camera/capture` | One matched pair as JSON: `metadata`, base64 `rgb_jpeg`, `depth_png` and `depth_preview_png`. Depth fields are null for a source without depth. |
+| `GET /api/camera/depth/snapshot.png` | Lossless 16-bit grayscale PNG: depth in millimetres, zero unknown. Matching `X-Camera-Frame` metadata. |
+| `GET /api/camera/depth/preview.png` | Display-only RGB8 PNG: near red (200 mm), far blue (3000 mm), unknown black. Values outside that display range saturate; raw depth is preserved. |
+| `GET /api/camera/depth/stream` | Multipart live PNG previews from the same pair cache, with matching part metadata. |
+
+Status adds `depth_available`, `depth_profile` and `capabilities.has_depth`.
+Pair metadata includes nested `depth` values: dimensions, `unit: "mm"`,
+`invalid_value: 0`, `aligned_to: "rgb"`, source sequence, valid-pixel fraction,
+acquisition time/age and measured `sync_delta_ms`. RGB metadata includes its
+own source sequence and acquisition time. Pairs require device timestamps
+within 20 ms; this is a measured time tolerance, not identical shutter timing.
+Both members must be fresh and captured after a settings dispatch. The paired
+OAK profile requires both outputs; a stereo failure makes camera output
+unavailable while the arm Session remains independent.
+
+Capture in the browser retains RGB, raw depth and its preview from one response.
+Download RGB and Download depth PNG therefore share the same run ID, sequence
+and settings revision. Fetching individual image routes separately can select
+different pairs; use `/capture` when correspondence matters. Depth images are
+sensor data, with calibration readiness still false.
+
+POSTs retain the same-origin JSON guard. Send `expected_run_id` and
+`expected_revision` from status plus at least one changed group, for example:
+
+```json
+{
+  "expected_run_id": "<run ID from status>",
+  "expected_revision": 0,
+  "exposure": {"mode": "manual", "time_us": 8000, "iso": 200},
+  "white_balance": {"mode": "manual", "temperature_k": 4500}
+}
+```
+
+These example values are not a calibration recommendation. Each supplied group
+replaces that entire group; Auto contains only `{"mode":"auto"}`. Manual
+exposure requires integer `time_us` and `iso` together. AF devices accept
+`focus: {"mode":"once"}` or `{"mode":"manual","lens_position":130}`;
+fixed-focus devices refuse focus changes. Manual white balance requires integer
+`temperature_k`. `anti_banding` accepts `off`, `50hz`, `60hz` or `auto` and
+only affects auto-exposure; retaining it in Manual does not prevent flicker.
+
+Capabilities publish supported modes and bounds. The adapter's application
+policy accepts exposure 100–60000 µs (below the 5-fps frame period), ISO
+100–1600, lens position 0–255 and white balance 1000–12000 K.
+`range_source: "application_policy"` and `hardware_validated: false` distinguish
+these software bounds from measured sensor limits. Values are never silently
+clamped. Unknown/null fields, partial Manual groups and manual values included
+in Auto are refused.
+
+Settings admission shares a short guard with motion. Changes during movement
+or an earlier pending change return 409; motion initiation waits until the
+camera change has produced a post-dispatch fresh frame. SDK I/O holds neither
+Session nor driver locks. Stop remains available throughout. There is no
+calibration batch or autonomous motion implementation at this stage.
+
+Acceptance returns `{"ok":true,"result":...}` with requested revision/groups
+and `application_status: "queued"`. Status later reports `sent` or `failed`.
+`sent` means SDK dispatch, not verified sensor application. Frame values
+(`time_us`, `iso`, `temperature_k`, `lens_position`, dimensions and `sensor_fps`)
+remain separate from requests; unknown lens position is null. `delivered_fps`
+measures delivery to the producer. `settings_revision` identifies the requested
+configuration; `settings_verified` and `measurement_ready` remain false.
+
+Frames include run ID, sequence, UTC `captured_at` estimated from the SDK's
+host-synchronized acquisition timestamp, `received_at` and acquisition age in
+milliseconds. Images older than one second are refused. A settings change
+clears the cache; pre-dispatch frames cannot acquire the new revision. Optional
+snapshot query `after_run_id=<run>&after_sequence=<sequence>` awaits a newer
+frame; both fields are required together. `wait_ms` defaults to 1000 and accepts
+0–2000. Waiting is asynchronous and bounded, with no per-client USB or encoding.
+
+Camera errors use 400 for invalid settings/query values, 409 for changed
+run/revision or busy state, 503 for disabled/stale/missing output or snapshot
+deadline, and 500 for unexpected camera handler failures. Camera errors do not
+invoke Session Stop. The worker retries connection after failures and assigns
+a new run ID and default settings after reconnect; old frame cursors/settings
+versions then conflict. No usable frame for five seconds triggers reconnection.
+The worker is a thread in the existing process; native SDK process failure
+is not isolated by a separate camera process.
+
+The Camera accordion provides capability-driven settings, requested/frame
+readings, View/Pause, fresh Capture and JPEG Download. View starts on demand;
+Pause closes that viewer's stream while acquisition continues. Camera feedback
+and request state are independent of robot controls. Metric tracking,
+settling/optical checks and calibration evidence are later work.
 
 ## HOME and PARK persistence
 
@@ -161,7 +276,7 @@ curl -X POST http://raspberrypi.local:8765/api/demo/restart \
 
 `/docs` serves Swagger UI and `/openapi.json` the OpenAPI spec, both generated
 from the running code. Swagger groups the endpoints as State, Power, Motion,
-Poses, Session settings, Demo and Bounded tests. Swagger UI loads its scripts from a CDN
+Poses, Session settings, Demo, Camera and Bounded tests. Swagger UI loads its scripts from a CDN
 (cdn.jsdelivr.net), so `/docs` needs internet on the viewing device;
 `/openapi.json` works offline. "Try it out" sends real actions, including
 `power_on` and `move` in hardware mode, without the page's readiness checkbox.
@@ -177,7 +292,7 @@ refused), and unknown fields are refused. Such a refusal reads
 | 403 | Host not allowed, or a POST without the matching `Origin` |
 | 404 | Unknown path |
 | 405 | Wrong method for a path, for example GET on an action |
-| 500 | Driver or server failure; the session stops first |
+| 500 | Driver or server failure; Session actions stop first. Camera failures remain camera errors. |
 
 Guard failures return 403. Invalid actions/arguments return 400. Driver/server
 failures attempt direct stop and return 500. Unknown GET paths return 404.

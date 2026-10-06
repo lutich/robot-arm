@@ -48,6 +48,7 @@ class Session:
         self.stop_lock = threading.Lock()
         self.stop_generation = 0
         self.prepared = self.armed = self.busy = False
+        self.camera_pending = False
         self.phase = None
         self.outputs_off = None
         self.commands = {c:None for c in JOINTS}
@@ -106,6 +107,8 @@ class Session:
         return True, None
 
     def _idle(self):
+        if self.camera_pending:
+            raise ValueError('Wait for the pending camera change before changing controls')
         if self.busy:
             raise ValueError('Wait for the current movement before changing controls')
 
@@ -323,6 +326,7 @@ class Session:
         with self.lock:
             if park_confirmed is not True:
                 raise ValueError('Confirm the arm is physically in PARK, supported and powered-ready')
+            self._idle()
             if self.busy or self.armed:
                 raise ValueError('Power OFF before starting another session')
             park, home = dict(self.poses['PARK']), dict(self.poses['HOME'])
@@ -375,6 +379,7 @@ class Session:
         """Return held commands to PARK, then directly disable PWM."""
         with self.lock:
             self._check_session()
+            self._idle()
             park = dict(self.poses['PARK'])
             if self.busy or any(self.commands[c] is None for c in park):
                 raise ValueError('Wait for movement and known joint commands before PARK')
@@ -415,6 +420,7 @@ class Session:
     def arm(self, *, ready, supported, switch_ready):
         generation = self.stop_generation
         with self.lock:
+            self._idle()
             if not self.prepared or self.outputs_off is not True or self.armed or self.busy:
                 raise ValueError('Prepare outputs with power OFF before arming')
             if not all(flag is True for flag in (ready, supported, switch_ready)):
@@ -441,6 +447,8 @@ class Session:
     def move(self, *, channel, target, first_clear):
         with self.lock:
             self._check_session()
+            if self.camera_pending:
+                raise ValueError('Wait for the pending camera change before moving')
             if self.busy:
                 raise ValueError('A move is already running')
             if not self.budget.allows(1):

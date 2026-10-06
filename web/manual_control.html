@@ -71,6 +71,30 @@
 </section>
 </div>
 </details>
+<details class="accordion" id="camera-section" open>
+<summary><span class="number">03</span><span class="section-title">Camera</span><span class="state" id="camera-state"><span class="dot"></span><span id="camera-label">Connecting</span></span><span class="chevron" aria-hidden="true"></span></summary>
+<div class="camera-layout">
+<div class="camera-view">
+<div class="camera-selector"><label for="camera-display">Display</label><select id="camera-display" disabled><option value="rgb">RGB</option><option id="camera-depth-option" value="depth" disabled>Depth preview</option></select></div>
+<div class="camera-image"><img id="camera-image" alt="Camera view of the arm and table" hidden><p id="camera-placeholder">Camera view is paused.</p></div>
+<div class="camera-actions"><button class="secondary" id="camera-view" disabled>View</button><button class="secondary" id="camera-capture" disabled>Capture</button><button class="secondary" id="camera-download" disabled>Download RGB</button><button class="secondary" id="camera-depth-download" disabled>Download depth PNG</button></div>
+<p class="camera-caption" id="camera-depth-legend" hidden>Depth preview: 200 mm red · 3000 mm blue · black unknown. Depth PNG stores millimetres; 0 is unknown.</p>
+<p class="camera-caption" id="camera-capture-info">Capture freezes a fresh RGB/depth pair. Pause closes only this live view.</p>
+</div>
+<div class="camera-controls">
+<p class="camera-profile" id="camera-profile">Camera is disabled for this session.</p>
+<form id="camera-settings">
+<fieldset class="camera-group" id="camera-exposure-group" disabled><legend>Exposure</legend><label>Mode<select id="camera-exposure-mode" data-camera-group="exposure"><option value="auto">Auto</option><option value="manual">Manual</option></select></label><div class="camera-fields"><label>Time <small>µs</small><input id="camera-time" data-camera-group="exposure" type="number" step="1"></label><label>ISO<input id="camera-iso" data-camera-group="exposure" type="number" step="1"></label></div></fieldset>
+<fieldset class="camera-group" id="camera-focus-group" disabled hidden><legend>Focus</legend><div class="camera-fields"><label>Mode<select id="camera-focus-mode" data-camera-group="focus"><option value="once">Once</option><option value="manual">Manual</option></select></label><button class="secondary" id="camera-focus-once" type="button">Focus once</button></div><label>Lens position <small>device setting</small><input id="camera-lens" data-camera-group="focus" type="number" step="1"></label></fieldset>
+<fieldset class="camera-group" id="camera-white-balance-group" disabled><legend>White balance</legend><div class="camera-fields"><label>Mode<select id="camera-white-balance-mode" data-camera-group="white_balance"><option value="auto">Auto</option><option value="manual">Manual</option></select></label><label>Temperature <small>K</small><input id="camera-temperature" data-camera-group="white_balance" type="number" step="1"></label></div></fieldset>
+<fieldset class="camera-group" id="camera-anti-banding-group" disabled><legend>Anti-flicker</legend><label>Mode<select id="camera-anti-banding" data-camera-group="anti_banding"></select></label><p class="camera-hint">Applies to Auto exposure.</p></fieldset>
+<div class="camera-actions"><button class="primary" id="camera-apply" type="submit" disabled>Apply</button><button class="secondary" id="camera-use-readings" type="button" disabled>Use current readings</button></div>
+</form>
+<p class="feedback" id="camera-feedback" role="status" aria-live="polite"></p>
+<dl class="camera-readings"><dt>Requested</dt><dd id="camera-requested">—</dd><dt>Latest camera frame</dt><dd id="camera-observed">—</dd><dt>Latest paired depth</dt><dd id="camera-depth-observed">No depth frame yet.</dd></dl>
+</div>
+</div>
+</details>
 <p class="connection" id="connection" role="status">Connecting…</p>
 </main>
 <dialog class="load-dialog" id="load-dialog" aria-labelledby="load-title">

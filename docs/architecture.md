@@ -90,13 +90,30 @@ Keep status distinct from position feedback and request acceptance distinct
 from completion. Preserve preview default and explicit physical readiness. API
 guards are documented in [API](api.md).
 
-HTTP endpoints are plain `def` functions, which FastAPI runs in worker threads.
+Session HTTP endpoints are plain `def` functions, which FastAPI runs in worker threads.
 `Session` blocks on locks, so an `async def` endpoint calling it would stall the
-event loop, Stop included. The one exception is Stop: it is `async` only to hand
+event loop, Stop included. Stop is `async` only to hand
 `session.stop` to its own thread limiter, so it never waits behind the shared
 workers. Request models in `presentation/api_models.py` are strict and carry no
 domain ranges; `Session` stays the authority. `tests/test_manual_api.py`
 enforces these rules.
+
+Optional camera access stays in `control`: `domain/camera.py` defines settings
+policy, frame values and the source port; `application/camera.py` owns one
+worker and an atomic latest RGB/depth pair; `infrastructure/oak_camera.py`
+lazily loads the pinned DepthAI SDK and time-matches aligned depth with RGB.
+`infrastructure/depth_images.py` encodes lossless metric PNGs and fixed-scale
+colour previews once per producer frame. `presentation/camera_api.py` maps
+camera errors and serves JPEG, PNG, live previews and paired capture through
+the existing app. SDK calls and image encoding happen only in the camera worker.
+
+Capture and live previews are async exceptions that only inspect the short-lived cache
+lock and await new frames. They do not call Session or USB I/O. Settings
+admission briefly takes Session then camera locks, reserving `camera_pending`
+against motion until a fresh post-dispatch frame arrives. Stop bypasses that
+reservation. Camera failures never enter the Session action wrapper that stops
+the arm. This is image access, with metric calibration readiness always false;
+there is no autonomous executor or new bounded context.
 
 The `provisioning` context is separate from this runtime. Its manifest ships
 operational files only; it never prepares hardware or issues API actions.

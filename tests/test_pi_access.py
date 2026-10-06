@@ -149,6 +149,40 @@ class ConnectionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             service_command('enable; reboot')
 
+    def test_service_camera_is_explicit_and_validated(self):
+        default = service_unit(Connection())
+        camera = service_unit(Connection(), camera='oak')
+        self.assertNotIn('--camera', default)
+        self.assertEqual(camera, default.replace('--host 0.0.0.0', '--host 0.0.0.0 --camera oak'))
+        for value in ('usb', 'oak; reboot', True):
+            with self.subTest(camera=value), self.assertRaises(ValueError):
+                service_unit(Connection(), camera=value)
+
+    def test_camera_install_sends_opt_in_and_secret_on_stdin_only(self):
+        with patch.dict(os.environ, {'PI_PASS':'login-secret'}), \
+                patch('roboter_arm.provisioning.presentation.cli.load_connection', return_value=Connection()), \
+                patch.object(subprocess, 'run') as run, patch.object(sys, 'stdout'), patch.object(sys, 'stderr'):
+            run.return_value = subprocess.CompletedProcess([], 0, b'', b'')
+            with self.assertRaises(SystemExit) as exit:
+                main(['service', 'install', '--camera', 'oak'])
+        self.assertEqual(exit.exception.code, 0)
+        args, kwargs = run.call_args
+        self.assertNotIn('login-secret', ' '.join(args[0]))
+        password, unit = kwargs['input'].decode().split('\n', 1)
+        self.assertEqual(password, 'login-secret')
+        self.assertEqual(unit, service_unit(Connection(), camera='oak'))
+
+    def test_camera_install_option_does_not_change_other_service_actions(self):
+        with patch('roboter_arm.provisioning.presentation.cli.ssh') as remote, patch.object(sys, 'stderr'):
+            for action in ('start', 'stop', 'restart', 'status'):
+                with self.subTest(action=action), self.assertRaises(SystemExit) as exit:
+                    main(['service', action, '--camera', 'oak'])
+                self.assertEqual(exit.exception.code, 2)
+            with self.assertRaises(SystemExit) as exit:
+                main(['service', 'install', '--camera', 'unsupported'])
+            self.assertEqual(exit.exception.code, 2)
+            remote.assert_not_called()
+
     def test_service_install_sends_the_password_on_stdin_only(self):
         with patch.dict(os.environ, {'PI_PASS': 'login-secret'}), \
                 patch('roboter_arm.provisioning.presentation.cli.load_connection', return_value=Connection()), \

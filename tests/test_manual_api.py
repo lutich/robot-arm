@@ -19,6 +19,7 @@ from fastapi.routing import APIRoute
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 from roboter_arm.control.presentation import http_api as app
+from roboter_arm.control.presentation.camera_api import CAMERA_PATHS
 from test_motion import FakeTime
 
 
@@ -277,8 +278,8 @@ class ManualAPITests(unittest.TestCase):
         self.assertIn(b'swagger-ui', page)
         status, spec = self.request('GET', '/openapi.json')
         self.assertEqual(status, 200)
-        self.assertEqual(set(spec['paths']), {'/api/state', '/api/stop', *(f'/api/{path}' for path in app.ACTIONS)})
-        self.assertEqual(len(spec['paths']), 25)
+        self.assertEqual(set(spec['paths']), {'/api/state', '/api/stop', *(f'/api/{path}' for path in app.ACTIONS), *CAMERA_PATHS})
+        self.assertEqual(len(spec['paths']), 33)
         power_on = spec['components']['schemas']['PowerOn']
         self.assertEqual(power_on['properties']['park_confirmed']['type'], 'boolean')
         self.assertFalse(power_on['additionalProperties'])
@@ -288,11 +289,14 @@ class ManualAPITests(unittest.TestCase):
         self.assertEqual({path for path, names in tags.items() if names == ['Bounded tests']}, {'/api/prepare', '/api/arm'})
         self.assertEqual(self.send('GET', '/docs', None, {'Host':'evil.example'})[0], 403)
 
-    def test_only_stop_is_async_and_it_never_waits_for_the_shared_threads(self):
+    def test_session_routes_only_stop_is_async_and_it_never_waits_for_the_shared_threads(self):
         for route in app.create_app(self.session).routes:
             if isinstance(route, APIRoute):
                 with self.subTest(path=route.path):
-                    self.assertEqual(inspect.iscoroutinefunction(route.endpoint), route.path == '/api/stop')
+                    asynchronous = ('/api/stop', '/api/camera/snapshot.jpg', '/api/camera/stream.mjpg',
+                                    '/api/camera/capture', '/api/camera/depth/snapshot.png',
+                                    '/api/camera/depth/preview.png', '/api/camera/depth/stream')
+                    self.assertEqual(inspect.iscoroutinefunction(route.endpoint), route.path in asynchronous)
         release = threading.Event()
         state = self.session.state
         def blocked():

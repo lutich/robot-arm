@@ -4,6 +4,11 @@ const $ = id => document.getElementById(id);
 const names = ['Base rotation', 'Shoulder', 'Elbow', 'Wrist flexion', 'Wrist rotation', 'Gripper'];
 let state = null, connected = false, selected = 0, picked = -1, pending = 0;
 let pollFlight = null, renderedList = '', renderedBounds = '', renderedSettings = '', lastError = null;
+let cameraStatus = null, cameraConnected = false, cameraPollFlight = null;
+let cameraSettingsFlight = false, cameraCaptureFlight = false, cameraViewing = false, cameraCaptured = null;
+let cameraDisplay = 'rgb';
+let cameraDraft = null, cameraFormKey = '', cameraLastError = null;
+const cameraDirty = new Set();
 
 function notice(message, error = false) {
   $('notice').textContent = message;
@@ -149,6 +154,7 @@ function renderDemo(canMove, editing) {
 }
 
 function render() {
+  renderCamera();
   if (!state) return;
   const item = joint(), on = state.armed || state.busy || state.outputs_off === false;
   const idle = connected && !state.busy && pending === 0;
@@ -263,6 +269,330 @@ function loadDialog() {
   $('load-dialog').showModal();
 }
 
+function cameraNotice(message, error = false) {
+  $('camera-feedback').textContent = message;
+  $('camera-feedback').classList.toggle('error', error);
+}
+
+async function cameraRequest(path, options = {}) {
+  const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 4000);
+  try {
+    const response = await fetch('/api/camera/' + path, {cache: 'no-store', ...options, signal: controller.signal});
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({})), error = Error(data.error || 'Camera request failed');
+      error.status = response.status;
+      throw error;
+    }
+    return await response.json();
+  } catch (error) {
+    if (error.name === 'AbortError') throw Error('Camera request timed out.');
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function cameraOptions(id, modes, labels = {}) {
+  const select = $(id);
+  select.replaceChildren(...modes.map(mode => {
+    const option = document.createElement('option');
+    option.value = mode;
+    option.textContent = labels[mode] || mode[0].toUpperCase() + mode.slice(1);
+    return option;
+  }));
+}
+
+function cameraBounds(id, range) {
+  for (const bound of ['min', 'max']) {
+    if (Number.isFinite(range?.[bound])) $(id)[bound] = range[bound];
+    else $(id).removeAttribute(bound);
+  }
+}
+
+function syncCameraForm() {
+  const status = cameraStatus, controls = status.capabilities?.controls || {};
+  const key = JSON.stringify([status.run_id, status.settings_revision, status.requested, controls]);
+  if (cameraDraft && cameraDraft.run_id !== status.run_id) cameraDirty.clear();
+  if (key === cameraFormKey || cameraDirty.size || cameraSettingsFlight) return;
+  cameraFormKey = key;
+  cameraDraft = {run_id: status.run_id, revision: status.settings_revision};
+  const requested = status.requested || {}, frame = status.latest_frame || {};
+  for (const [group, id] of [['exposure', 'camera-exposure-mode'], ['focus', 'camera-focus-mode'],
+    ['white_balance', 'camera-white-balance-mode'], ['anti_banding', 'camera-anti-banding']]) {
+    cameraOptions(id, controls[group]?.modes || [], {once: 'Once', off: 'Off', '50hz': '50 Hz', '60hz': '60 Hz'});
+    $(id).value = group === 'anti_banding' ? requested[group] || '' : requested[group]?.mode || 'auto';
+  }
+  for (const [id, group, field, value] of [
+    ['camera-time', 'exposure', 'time_us', requested.exposure?.time_us ?? frame.time_us],
+    ['camera-iso', 'exposure', 'iso', requested.exposure?.iso ?? frame.iso],
+    ['camera-lens', 'focus', 'lens_position', requested.focus?.lens_position ?? frame.lens_position],
+    ['camera-temperature', 'white_balance', 'temperature_k', requested.white_balance?.temperature_k ?? frame.temperature_k]
+  ]) {
+    cameraBounds(id, controls[group]?.[field]);
+    $(id).value = Number.isFinite(value) ? value : '';
+  }
+}
+
+function cameraFrameText(frame) {
+  if (!frame) return 'No frame yet.';
+  return [Number.isFinite(frame.time_us) ? frame.time_us + ' µs' : null,
+    Number.isFinite(frame.iso) ? 'ISO ' + frame.iso : null,
+    Number.isFinite(frame.temperature_k) ? frame.temperature_k + ' K' : null,
+    Number.isInteger(frame.lens_position) && frame.lens_position >= 0 ? 'Lens ' + frame.lens_position : null,
+    'Frame ' + frame.sequence].filter(Boolean).join(' · ');
+}
+
+function cameraDepthText(depth) {
+  if (!depth) return 'No depth frame yet.';
+  return [depth.width + ' × ' + depth.height + ' · ' + depth.unit + ' · aligned to ' + depth.aligned_to.toUpperCase(),
+    Number.isFinite(depth.valid_fraction) ? (depth.valid_fraction * 100).toFixed(1) + '% valid' : null,
+    Number.isFinite(depth.sync_delta_ms) ? 'Skew ' + depth.sync_delta_ms.toFixed(1) + ' ms' : null,
+    Number.isFinite(depth.age_ms) ? Math.round(depth.age_ms) + ' ms old' : null].filter(Boolean).join(' · ');
+}
+
+function pauseCameraView() {
+  cameraViewing = false;
+  $('camera-image').removeAttribute('src');
+  const url = cameraDisplay === 'depth' ? cameraCaptured?.depthPreviewUrl : cameraCaptured?.rgbUrl;
+  if (url) {
+    $('camera-image').src = url;
+    $('camera-image').hidden = false;
+    $('camera-placeholder').hidden = true;
+  } else {
+    $('camera-image').hidden = true;
+    $('camera-placeholder').hidden = false;
+  }
+}
+
+function startCameraView() {
+  cameraViewing = true;
+  $('camera-image').removeAttribute('src');
+  $('camera-image').src = '/api/camera/' + (cameraDisplay === 'depth' ? 'depth/stream' : 'stream.mjpg');
+  $('camera-image').hidden = false;
+  $('camera-placeholder').hidden = true;
+}
+
+function renderCamera() {
+  const status = cameraStatus, available = cameraConnected && status?.available;
+  const depthAvailable = available && status.depth_available;
+  const retainedDepth = Boolean(cameraCaptured?.depthPreviewUrl);
+  const controls = status?.capabilities?.controls || {};
+  const editing = available && connected && !state?.busy && !pending && !status.locked &&
+    !status.pending && !cameraSettingsFlight;
+  if (cameraViewing && (!available || cameraDisplay === 'depth' && !depthAvailable)) pauseCameraView();
+  if (cameraDisplay === 'depth' && !depthAvailable && !retainedDepth) {
+    cameraDisplay = 'rgb';
+    $('camera-display').value = 'rgb';
+    pauseCameraView();
+  }
+  $('camera-display').disabled = cameraCaptureFlight || !available && !cameraCaptured;
+  $('camera-depth-option').disabled = !depthAvailable && !retainedDepth;
+  $('camera-depth-legend').hidden = cameraDisplay !== 'depth';
+  $('camera-image').alt = cameraDisplay === 'depth' ? 'Colorized depth preview; display only' : 'Camera view of the arm and table';
+  $('camera-label').textContent = !cameraConnected ? 'Offline' : !status.enabled ? 'Disabled' :
+    status.application_status === 'starting' ? 'Starting' : available ? 'Available' : 'Unavailable';
+  $('camera-state').classList.toggle('on', Boolean(available));
+  $('camera-view').textContent = cameraViewing ? 'Pause' : 'View';
+  $('camera-view').disabled = !available || cameraDisplay === 'depth' && !depthAvailable || cameraCaptureFlight;
+  $('camera-capture').disabled = !available || !status.latest_frame || status.pending || cameraSettingsFlight || cameraCaptureFlight;
+  $('camera-download').disabled = !cameraCaptured || cameraCaptureFlight;
+  $('camera-depth-download').disabled = !cameraCaptured?.depthUrl || cameraCaptureFlight;
+  if (!status) return;
+  syncCameraForm();
+  $('camera-focus-group').hidden = !status.capabilities?.has_autofocus || !controls.focus;
+  for (const [group, id] of [['exposure', 'camera-exposure-group'], ['focus', 'camera-focus-group'],
+    ['white_balance', 'camera-white-balance-group'], ['anti_banding', 'camera-anti-banding-group']]) {
+    $(id).disabled = !editing || !controls[group];
+  }
+  for (const [mode, ids] of [['camera-exposure-mode', ['camera-time', 'camera-iso']],
+    ['camera-focus-mode', ['camera-lens']], ['camera-white-balance-mode', ['camera-temperature']]]) {
+    for (const id of ids) {
+      $(id).disabled = !editing || $(mode).value !== 'manual';
+      $(id).required = $(mode).value === 'manual';
+    }
+  }
+  $('camera-anti-banding').disabled = !editing || $('camera-exposure-mode').value !== 'auto';
+  $('camera-focus-once').disabled = !editing || cameraDirty.size > 0;
+  $('camera-apply').disabled = !editing || !cameraDirty.size;
+  $('camera-use-readings').disabled = !editing || !status.latest_frame;
+  const profile = status.profile;
+  $('camera-profile').textContent = !status.enabled ? 'Camera is disabled for this session.' : profile ?
+    profile.width + ' × ' + profile.height + ' · ' + profile.fps + ' fps · JPEG quality ' + profile.jpeg_quality +
+    (profile.undistortion ? ' · Undistorted' : '') +
+    (status.capabilities?.has_autofocus ? ' · Autofocus lens' : available ? ' · Fixed focus' : '') +
+    (status.capabilities?.has_depth ? ' · Camera depth only; robot calibration pending.' :
+      ' · Image access only; metric calibration pending.') : 'Waiting for camera.';
+  const depthProfile = status.depth_profile;
+  if (depthProfile) $('camera-depth-legend').textContent = 'Depth preview: ' + depthProfile.preview_near_mm +
+    ' mm red · ' + depthProfile.preview_far_mm + ' mm blue · black unknown. Depth PNG stores millimetres; 0 is unknown.';
+  const requested = status.requested || {};
+  $('camera-requested').textContent = ['Exposure ' + (requested.exposure?.mode || '—'),
+    requested.exposure?.mode === 'manual' ? requested.exposure.time_us + ' µs · ISO ' + requested.exposure.iso : null,
+    'WB ' + (requested.white_balance?.mode === 'manual' ? requested.white_balance.temperature_k + ' K' : 'Auto'),
+    requested.focus ? 'Focus ' + (requested.focus.mode === 'manual' ? requested.focus.lens_position : 'once') : null,
+    'Revision ' + status.settings_revision + ' · ' + status.application_status].filter(Boolean).join(' · ');
+  $('camera-observed').textContent = cameraFrameText(status.latest_frame) +
+    (Number.isFinite(status.frame_age_ms) ? ' · ' + Math.round(status.frame_age_ms) + ' ms old' : '');
+  $('camera-depth-observed').textContent = cameraDepthText(status.latest_frame?.depth);
+}
+
+async function pollCamera() {
+  if (cameraPollFlight) return cameraPollFlight;
+  cameraPollFlight = (async () => {
+    try {
+      cameraStatus = await cameraRequest('status');
+      cameraConnected = true;
+      if (cameraStatus.last_error && cameraStatus.last_error !== cameraLastError) cameraNotice(cameraStatus.last_error, true);
+      cameraLastError = cameraStatus.last_error;
+    } catch (error) {
+      cameraConnected = false;
+      cameraNotice(error.message, true);
+    } finally {
+      cameraPollFlight = null;
+      renderCamera();
+    }
+  })();
+  return cameraPollFlight;
+}
+
+async function applyCameraSettings(groups) {
+  if (cameraSettingsFlight || !cameraDraft) return;
+  cameraSettingsFlight = true;
+  renderCamera();
+  try {
+    await cameraRequest('settings', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({expected_run_id: cameraDraft.run_id, expected_revision: cameraDraft.revision, ...groups})});
+    cameraDirty.clear();
+    cameraFormKey = '';
+    cameraNotice('Settings requested. Frame readings show what the camera reports.');
+  } catch (error) {
+    if (error.status === 409) {
+      cameraDirty.clear();
+      cameraFormKey = '';
+    }
+    cameraNotice(error.message, true);
+  } finally {
+    cameraSettingsFlight = false;
+    if (cameraPollFlight) await cameraPollFlight;
+    await pollCamera();
+  }
+}
+
+function cameraSettingsSubmit(event) {
+  event.preventDefault();
+  const groups = {};
+  for (const group of cameraDirty) {
+    if (group === 'anti_banding') groups[group] = $('camera-anti-banding').value;
+    if (group === 'exposure') groups[group] = $('camera-exposure-mode').value === 'auto' ? {mode: 'auto'} :
+      {mode: 'manual', time_us: Number($('camera-time').value), iso: Number($('camera-iso').value)};
+    if (group === 'focus') groups[group] = $('camera-focus-mode').value === 'once' ? {mode: 'once'} :
+      {mode: 'manual', lens_position: Number($('camera-lens').value)};
+    if (group === 'white_balance') groups[group] = $('camera-white-balance-mode').value === 'auto' ? {mode: 'auto'} :
+      {mode: 'manual', temperature_k: Number($('camera-temperature').value)};
+  }
+  if (cameraDirty.size) applyCameraSettings(groups);
+}
+
+function useCameraReadings() {
+  const frame = cameraStatus.latest_frame, controls = cameraStatus.capabilities.controls;
+  if (!frame) return;
+  for (const [group, modeId, fields] of [
+    ['exposure', 'camera-exposure-mode', [['time_us', 'camera-time'], ['iso', 'camera-iso']]],
+    ['focus', 'camera-focus-mode', [['lens_position', 'camera-lens']]],
+    ['white_balance', 'camera-white-balance-mode', [['temperature_k', 'camera-temperature']]]
+  ]) {
+    if (!controls[group] || !fields.every(([field]) => Number.isInteger(frame[field]) &&
+      frame[field] >= controls[group][field].min && frame[field] <= controls[group][field].max)) continue;
+    $(modeId).value = 'manual';
+    for (const [field, id] of fields) $(id).value = frame[field];
+    cameraDirty.add(group);
+  }
+  cameraDraft = {run_id: cameraStatus.run_id, revision: cameraStatus.settings_revision};
+  cameraNotice('Current readings staged. Review them, then Apply.');
+  renderCamera();
+}
+
+async function captureCamera() {
+  if (cameraCaptureFlight) return;
+  cameraCaptureFlight = true;
+  pauseCameraView();
+  cameraNotice('Capturing a fresh camera frame…');
+  renderCamera();
+  try {
+    const current = await cameraRequest('status'), frame = current.latest_frame;
+    if (!current.available || !frame) throw Error('Camera has no fresh frame.');
+    const query = new URLSearchParams({wait_ms: '2000', after_run_id: frame.run_id, after_sequence: frame.sequence});
+    const capture = await cameraRequest('capture?' + query), metadata = capture.metadata;
+    if (!metadata?.run_id || !Number.isInteger(metadata.sequence)) throw Error('Captured frame metadata is missing.');
+    const imageBlob = (encoded, type) => new Blob([Uint8Array.from(atob(encoded), value => value.charCodeAt(0))], {type});
+    const rgb = imageBlob(capture.rgb_jpeg, 'image/jpeg');
+    const depth = capture.depth_png ? imageBlob(capture.depth_png, 'image/png') : null;
+    const preview = capture.depth_preview_png ? imageBlob(capture.depth_preview_png, 'image/png') : null;
+    const previous = cameraCaptured;
+    cameraCaptured = {metadata, rgbUrl: URL.createObjectURL(rgb),
+      depthUrl: depth ? URL.createObjectURL(depth) : null, depthPreviewUrl: preview ? URL.createObjectURL(preview) : null};
+    pauseCameraView();
+    releaseCameraCapture(previous);
+    $('camera-capture-info').textContent = 'Captured ' + metadata.captured_at + ' · ' +
+      cameraFrameText(metadata) + ' · Revision ' + metadata.settings_revision +
+      (metadata.depth ? ' · Depth: ' + cameraDepthText(metadata.depth) : ' · RGB only');
+    cameraNotice(metadata.depth ? 'Pair captured. Both downloads save this pair.' : 'Image captured. Download RGB saves this image.');
+  } catch (error) {
+    cameraNotice(error.message, true);
+  } finally {
+    cameraCaptureFlight = false;
+    renderCamera();
+  }
+}
+
+$('camera-settings').onsubmit = cameraSettingsSubmit;
+document.querySelectorAll('[data-camera-group]').forEach(input => input.oninput = () => {
+  cameraDirty.add(input.dataset.cameraGroup);
+  renderCamera();
+});
+$('camera-focus-once').onclick = () => applyCameraSettings({focus: {mode: 'once'}});
+$('camera-use-readings').onclick = useCameraReadings;
+$('camera-view').onclick = () => {
+  if (cameraViewing) pauseCameraView();
+  else startCameraView();
+  renderCamera();
+};
+$('camera-display').onchange = () => {
+  const viewing = cameraViewing;
+  cameraDisplay = $('camera-display').value;
+  pauseCameraView();
+  if (viewing && cameraConnected && cameraStatus?.available &&
+    (cameraDisplay === 'rgb' || cameraStatus.depth_available)) startCameraView();
+  renderCamera();
+};
+$('camera-image').onerror = () => {
+  if (!cameraViewing) return;
+  pauseCameraView();
+  cameraNotice('Live view unavailable. Camera status and robot controls remain separate.', true);
+  renderCamera();
+};
+$('camera-capture').onclick = captureCamera;
+function downloadCamera(url, suffix) {
+  if (!cameraCaptured || !url) return;
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'camera-' + cameraCaptured.metadata.run_id + '-' + cameraCaptured.metadata.sequence + suffix;
+  document.body.append(link);
+  link.click();
+  link.remove();
+}
+$('camera-download').onclick = () => downloadCamera(cameraCaptured?.rgbUrl, '.jpg');
+$('camera-depth-download').onclick = () => downloadCamera(cameraCaptured?.depthUrl, '-depth.png');
+function releaseCameraCapture(capture) {
+  if (!capture) return;
+  for (const url of [capture.rgbUrl, capture.depthUrl, capture.depthPreviewUrl]) if (url) URL.revokeObjectURL(url);
+}
+window.addEventListener('pagehide', () => {
+  cameraViewing = false;
+  $('camera-image').removeAttribute('src');
+  releaseCameraCapture(cameraCaptured);
+});
+
 $('ready').onchange = render;
 $('power').onclick = () => state.armed ? action('power_off', {}, 'Returning to PARK, then disabling PWM. Keep support.') :
   action('power_on', {park_confirmed: $('ready').checked}, 'Enabling PARK, then moving to HOME. Watch the arm.');
@@ -309,3 +639,5 @@ $('load-confirm').onclick = async () => {
 
 poll();
 setInterval(poll, 500);
+pollCamera();
+setInterval(pollCamera, 1000);

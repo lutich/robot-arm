@@ -1,7 +1,7 @@
 """Strict JSON bodies for the HTTP actions; Session stays the authority on allowed values."""
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class Body(BaseModel):
@@ -89,6 +89,69 @@ class Reorder(Body):
 
 class Filename(Body):
     filename: str
+
+
+class CameraExposure(Body):
+    mode: Literal['auto', 'manual']
+    time_us: int | None = None
+    iso: int | None = None
+
+    @model_validator(mode='after')
+    def mode_values(self):
+        if self.mode == 'manual' and (self.time_us is None or self.iso is None):
+            raise ValueError('Manual exposure needs time_us and iso')
+        if self.mode == 'auto' and self.model_fields_set != {'mode'}:
+            raise ValueError('Auto exposure does not accept manual values')
+        return self
+
+
+class CameraFocus(Body):
+    mode: Literal['once', 'manual']
+    lens_position: int | None = None
+
+    @model_validator(mode='after')
+    def mode_values(self):
+        if self.mode == 'manual' and self.lens_position is None:
+            raise ValueError('Manual focus needs lens_position')
+        if self.mode == 'once' and self.model_fields_set != {'mode'}:
+            raise ValueError('Focus once does not accept lens_position')
+        return self
+
+
+class CameraWhiteBalance(Body):
+    mode: Literal['auto', 'manual']
+    temperature_k: int | None = None
+
+    @model_validator(mode='after')
+    def mode_values(self):
+        if self.mode == 'manual' and self.temperature_k is None:
+            raise ValueError('Manual white balance needs temperature_k')
+        if self.mode == 'auto' and self.model_fields_set != {'mode'}:
+            raise ValueError('Auto white balance does not accept temperature_k')
+        return self
+
+
+class CameraSettings(Body):
+    expected_run_id: str = Field(min_length=1)
+    expected_revision: int = Field(ge=0)
+    exposure: CameraExposure | None = None
+    focus: CameraFocus | None = None
+    white_balance: CameraWhiteBalance | None = None
+    anti_banding: Literal['off', '50hz', '60hz', 'auto'] | None = None
+
+    @field_validator('expected_run_id')
+    @classmethod
+    def nonempty_run(cls, value):
+        if not value.strip():
+            raise ValueError('Camera run ID must not be blank')
+        return value
+
+    @field_validator('exposure', 'focus', 'white_balance', 'anti_banding')
+    @classmethod
+    def nonnull_setting(cls, value):
+        if value is None:
+            raise ValueError('Camera settings must not be null')
+        return value
 
 
 class Accepted(BaseModel):

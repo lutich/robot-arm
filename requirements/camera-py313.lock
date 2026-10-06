@@ -1,0 +1,6 @@
+# Optional camera add-on for Linux aarch64 / standard CPython 3.13 / glibc >= 2.28.
+# Official PyPI wheels; NumPy is DepthAI's complete Python dependency closure.
+# https://pypi.org/project/depthai/3.6.1/#files
+# https://pypi.org/project/numpy/2.4.4/#files
+depthai==3.6.1 --hash=sha256:6d9fc39c224744402bb3e9dd9b95a392129df2ba8169fb6e2e75d9f6de39cbed
+numpy==2.4.4 --hash=sha256:45dbed2ab436a9e826e302fcdcbe9133f9b0006e5af7168afb8963a6520da103
