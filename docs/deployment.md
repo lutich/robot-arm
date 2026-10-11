@@ -136,6 +136,31 @@ from the thread-based camera worker, repeat the stop/install commands above
 to update the existing unit as well as the deployed Python files. Verify fresh
 RGB/depth, a new camera run ID and clean service shutdown with servo power off.
 
+HC-SR04 distance acquisition is also disabled by default and uses the already
+bundled `lgpio` runtime, without a camera add-on or new dependencies. After
+deploying the sensor modules and checking [wiring](hardware.md#hc-sr04-distance-sensor),
+with servo power off and the arm supported, opt in:
+
+```sh
+uv run --locked python scripts/service.py stop
+uv run --locked python scripts/service.py install --distance-sensor hcsr04
+```
+
+The choice persists across service restarts. Both opt-ins must be repeated
+when reinstalling a combined unit:
+`service.py install --camera oak --distance-sensor hcsr04`. Installing without
+an option disables that device in the startup command. The option is accepted
+only for `install`; `start`, `stop`, `restart` and `status` retain the installed
+choices. A sensor failure leaves the API available and does not prepare or stop
+servos; fix the hardware and restart the service to retry sensor startup.
+
+Verify `/api/distance/status`, then request `/api/distance/read?samples=5` from
+a separate LAN client. Compare repeated batches against several ruler-measured
+distances, observing spread and error separately from HTTP availability. With
+servo power off, test a missing echo and service stop/start for clean GPIO
+release. Sensor batches are bounded to five seconds; shutdown disables servos
+first, cancels sensor waits, then closes the sensor after acquisition exits.
+
 Open http://raspberrypi.local:8765/ (or the Pi's IP address) from any device on
 the Pi's Wi-Fi or Ethernet network; API state is at `/api/state`. Substitute your
 configured `app_port`. The app starts unprepared/unarmed: it does not initialize

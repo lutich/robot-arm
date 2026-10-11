@@ -20,6 +20,7 @@ from fastapi.routing import APIRoute
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 from roboter_arm.control.presentation import http_api as app
 from roboter_arm.control.presentation.camera_api import CAMERA_PATHS
+from roboter_arm.control.presentation.distance_api import DISTANCE_PATHS
 from test_motion import FakeTime
 
 
@@ -278,8 +279,9 @@ class ManualAPITests(unittest.TestCase):
         self.assertIn(b'swagger-ui', page)
         status, spec = self.request('GET', '/openapi.json')
         self.assertEqual(status, 200)
-        self.assertEqual(set(spec['paths']), {'/api/state', '/api/stop', *(f'/api/{path}' for path in app.ACTIONS), *CAMERA_PATHS})
-        self.assertEqual(len(spec['paths']), 33)
+        self.assertEqual(set(spec['paths']), {'/api/state', '/api/stop', *(f'/api/{path}' for path in app.ACTIONS),
+                                             *CAMERA_PATHS, *DISTANCE_PATHS})
+        self.assertEqual(len(spec['paths']), 35)
         power_on = spec['components']['schemas']['PowerOn']
         self.assertEqual(power_on['properties']['park_confirmed']['type'], 'boolean')
         self.assertFalse(power_on['additionalProperties'])
@@ -287,6 +289,7 @@ class ManualAPITests(unittest.TestCase):
         self.assertEqual([tag['name'] for tag in spec['tags']], [tag['name'] for tag in app.TAGS])
         self.assertTrue(all(len(names) == 1 and names[0] in {tag['name'] for tag in app.TAGS} for names in tags.values()), tags)
         self.assertEqual({path for path, names in tags.items() if names == ['Bounded tests']}, {'/api/prepare', '/api/arm'})
+        self.assertEqual({path for path, names in tags.items() if names == ['Distance']}, set(DISTANCE_PATHS))
         self.assertEqual(self.send('GET', '/docs', None, {'Host':'evil.example'})[0], 403)
 
     def test_session_routes_only_stop_is_async_and_it_never_waits_for_the_shared_threads(self):

@@ -126,5 +126,19 @@ reservation. Camera failures never enter the Session action wrapper that stops
 the arm. This is image access, with metric calibration readiness always false;
 there is no autonomous executor or new bounded context.
 
+Optional distance readings also stay in `control`: `domain/distance.py` defines
+the pulse source port, fixed policy and result values;
+`application/distance.py` admits one batch, enforces cross-request trigger
+spacing and computes statistics. `infrastructure/hcsr04.py` lazily loads
+bundled `lgpio` at explicit startup, claims only BCM23/24 and rejects stale or
+malformed edge sequences. `presentation/distance_api.py` validates query values
+and maps sensor results/errors through the existing app. Acquisition runs in a
+worker thread; status does not trigger, overlapping batches are refused without
+queuing and Stop retains its separate execution path. Distance services have no
+Session or servo driver reference. Startup failure leaves the API available,
+with recovery on restart. Shutdown disables servos first, cancels sensor waits,
+joins acquisition and releases only claimed sensor resources. No temperature
+compensation, calibration offset or autonomous arm calibration is implemented.
+
 The `provisioning` context is separate from this runtime. Its manifest ships
 operational files only; it never prepares hardware or issues API actions.

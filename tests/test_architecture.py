@@ -6,7 +6,7 @@ import unittest
 
 SRC = Path(__file__).resolve().parents[1] / 'src'
 LAYERS = ('domain', 'application', 'infrastructure', 'presentation')
-HARDWARE = ('board', 'adafruit_')
+HARDWARE = ('board', 'adafruit_', 'lgpio')
 
 
 def modules():

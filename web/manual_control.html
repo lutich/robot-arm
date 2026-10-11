@@ -95,6 +95,24 @@
 </div>
 </div>
 </details>
+<details class="accordion" id="distance-section" open>
+<summary><span class="number">04</span><span class="section-title">Distance</span><span class="state" id="distance-state"><span class="dot"></span><span id="distance-label">Connecting</span></span><span class="chevron" aria-hidden="true"></span></summary>
+<div class="distance-layout">
+<div class="distance-controls">
+<form class="distance-form" id="distance-form"><label for="distance-samples">Samples<input id="distance-samples" type="number" min="1" max="20" step="1" value="5" required disabled></label><button class="primary" id="distance-measure" type="submit" disabled>Measure</button></form>
+<p class="feedback" id="distance-feedback" role="status" aria-live="polite"></p>
+</div>
+<div class="distance-measurement">
+<p class="distance-heading">Median distance</p>
+<p class="distance-value"><span id="distance-value">—</span><small>mm</small></p>
+<p class="distance-summary" id="distance-summary">No measurement yet.</p>
+<time class="distance-time" id="distance-time"></time>
+<div class="distance-results" id="distance-results" hidden>
+<div class="distance-table-scroll"><table class="distance-table"><caption>Individual readings</caption><thead><tr><th scope="col">Sample</th><th scope="col">Time (UTC)</th><th scope="col">Distance (mm)</th><th scope="col">Pulse (µs)</th><th scope="col">Result</th></tr></thead><tbody id="distance-readings"></tbody></table></div>
+</div>
+</div>
+</div>
+</details>
 <p class="connection" id="connection" role="status">Connecting…</p>
 </main>
 <dialog class="load-dialog" id="load-dialog" aria-labelledby="load-title">

@@ -12,10 +12,12 @@ SERVICE = 'robot-arm.service'
 SYSTEMCTL = 'XDG_RUNTIME_DIR=/run/user/$(id -u) systemctl --user '
 
 
-def service_unit(connection, *, camera=None):
+def service_unit(connection, *, camera=None, distance_sensor=None):
     """User unit serving the hardware app on every interface; no PWM until Power on in the page."""
     if camera not in (None, 'oak'):
         raise ValueError('Service camera must be oak or omitted')
+    if distance_sensor not in (None, 'hcsr04'):
+        raise ValueError('Service distance sensor must be hcsr04 or omitted')
     root = connection.remote_dir
     if not re.fullmatch(r'[A-Za-z0-9._/-]+', root):
         raise ValueError('remote_dir must be a plain path (letters, digits, . _ - /) for the app service')
@@ -24,6 +26,8 @@ def service_unit(connection, *, camera=None):
                         '--port', str(connection.app_port), '--host', '0.0.0.0'])
     if camera is not None:
         command += ' --camera ' + camera
+    if distance_sensor is not None:
+        command += ' --distance-sensor ' + distance_sensor
     # Let the app close its camera worker before systemd escalates to the whole group.
     kill_mode = 'KillMode=mixed\n' if camera is not None else ''
     # Restart=no keeps a crash or an unconfirmed PWM-off visible in the service status.
@@ -46,11 +50,12 @@ INSTALL_COMMAND = (r'''IFS= read -r pw && printf '%s\n' "$pw" | sudo -S -k -p ''
                    + SYSTEMCTL + 'enable --now ' + SERVICE)
 
 
-def install_payload(connection, *, camera=None):
+def install_payload(connection, *, camera=None, distance_sensor=None):
     password = read_password()
     if not password:
         raise ValueError('service install needs PI_PASS in .env for sudo on the Pi')
-    return (password + '\n' + service_unit(connection, camera=camera)).encode()
+    return (password + '\n' + service_unit(connection, camera=camera,
+                                          distance_sensor=distance_sensor)).encode()
 
 
 def service_command(action):

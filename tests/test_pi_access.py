@@ -184,6 +184,44 @@ class ConnectionTests(unittest.TestCase):
             self.assertEqual(exit.exception.code, 2)
             remote.assert_not_called()
 
+    def test_service_distance_sensor_is_explicit_independent_and_validated(self):
+        default = service_unit(Connection())
+        sensor = service_unit(Connection(), distance_sensor='hcsr04')
+        self.assertNotIn('--distance-sensor', default)
+        self.assertEqual(sensor, default.replace('--host 0.0.0.0',
+                                                '--host 0.0.0.0 --distance-sensor hcsr04'))
+        combined = service_unit(Connection(), camera='oak', distance_sensor='hcsr04')
+        self.assertIn('--camera oak --distance-sensor hcsr04', combined)
+        self.assertIn('KillMode=mixed', combined)
+        for value in ('ultrasonic', 'hcsr04; reboot', True):
+            with self.subTest(distance_sensor=value), self.assertRaises(ValueError):
+                service_unit(Connection(), distance_sensor=value)
+
+    def test_distance_sensor_install_sends_opt_in_and_secret_on_stdin_only(self):
+        with patch.dict(os.environ, {'PI_PASS': 'login-secret'}), \
+                patch('roboter_arm.provisioning.presentation.cli.load_connection', return_value=Connection()), \
+                patch.object(subprocess, 'run') as run, patch.object(sys, 'stdout'), patch.object(sys, 'stderr'):
+            run.return_value = subprocess.CompletedProcess([], 0, b'', b'')
+            with self.assertRaises(SystemExit) as exit:
+                main(['service', 'install', '--distance-sensor', 'hcsr04', '--camera', 'oak'])
+        self.assertEqual(exit.exception.code, 0)
+        args, kwargs = run.call_args
+        self.assertNotIn('login-secret', ' '.join(args[0]))
+        password, unit = kwargs['input'].decode().split('\n', 1)
+        self.assertEqual(password, 'login-secret')
+        self.assertEqual(unit, service_unit(Connection(), camera='oak', distance_sensor='hcsr04'))
+
+    def test_distance_sensor_install_option_does_not_change_other_service_actions(self):
+        with patch('roboter_arm.provisioning.presentation.cli.ssh') as remote, patch.object(sys, 'stderr'):
+            for action in ('start', 'stop', 'restart', 'status'):
+                with self.subTest(action=action), self.assertRaises(SystemExit) as exit:
+                    main(['service', action, '--distance-sensor', 'hcsr04'])
+                self.assertEqual(exit.exception.code, 2)
+            with self.assertRaises(SystemExit) as exit:
+                main(['service', 'install', '--distance-sensor', 'unsupported'])
+            self.assertEqual(exit.exception.code, 2)
+            remote.assert_not_called()
+
     def test_service_install_sends_the_password_on_stdin_only(self):
         with patch.dict(os.environ, {'PI_PASS': 'login-secret'}), \
                 patch('roboter_arm.provisioning.presentation.cli.load_connection', return_value=Connection()), \

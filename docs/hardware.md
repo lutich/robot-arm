@@ -65,6 +65,35 @@ uv run docs/generate_wiring.py
 The script pins PinViz 0.19.0 in its uv script metadata. It is a documentation
 tool dependency; the robot's runtime dependencies do not change.
 
+## HC-SR04 distance sensor
+
+The HC-SR04 uses 5 V power and a 5 V ECHO signal. Its ECHO must pass through
+the divider before reaching the Pi's GPIO. Two equal 2 kΩ resistors give
+approximately 2.5 V when ECHO is HIGH; the divider belongs only in ECHO, with
+the sensor powered directly from 5 V. [Sensor pinouts](https://learn.adafruit.com/ultrasonic-sonar-distance-sensors/pinouts)
+
+| Sensor connection | Recorded wire color | Pi connection |
+| --- | --- | --- |
+| VCC | Green | Physical 2 — 5 V |
+| TRIG | Yellow | Physical 16 — BCM GPIO23 |
+| ECHO | Black | First 2 kΩ resistor, then divider junction |
+| GND | White | Common ground, physical 14 |
+| Divider junction | Blue Pi jumper | Physical 18 — BCM GPIO24 |
+
+Wire ECHO → 2 kΩ → junction → 2 kΩ → common GND. The blue GPIO24 wire
+connects to that junction. Sensor GND, the lower resistor and Pi GND share the
+same electrical node; separate breadboard strips need a connecting jumper.
+The physical even-numbered pins are the outer header row, nearest the Pi
+board edge. Use physical pin numbering together with BCM names when checking
+connections; the sensor pins do not replace the PCA9685 connections above.
+
+The existing runtime bundles `lgpio`; the sensor adapter claims only BCM23/24
+on gpiochip0 during explicit startup. The [distance API](api.md#optional-hc-sr04-distance-readings)
+is optional and independent of servo initialization. Take initial readings
+with servo power off, a flat perpendicular target and a ruler reference from
+the front faces of the metal transducers. Test repeatability and measured
+error separately; these readings are not calibrated arm-position feedback.
+
 ## Channel mapping
 
 | Channel | Assignment | Historical count guard |

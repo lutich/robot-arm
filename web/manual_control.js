@@ -9,6 +9,8 @@ let cameraSettingsFlight = false, cameraCaptureFlight = false, cameraViewing = f
 let cameraDisplay = 'rgb';
 let cameraDraft = null, cameraFormKey = '', cameraLastError = null;
 const cameraDirty = new Set();
+let distanceStatus = null, distanceConnected = false, distancePollFlight = null;
+let distanceReadFlight = false, distancePollError = null;
 
 function notice(message, error = false) {
   $('notice').textContent = message;
@@ -155,6 +157,7 @@ function renderDemo(canMove, editing) {
 
 function render() {
   renderCamera();
+  renderDistance();
   if (!state) return;
   const item = joint(), on = state.armed || state.busy || state.outputs_off === false;
   const idle = connected && !state.busy && pending === 0;
@@ -545,6 +548,112 @@ async function captureCamera() {
   }
 }
 
+function distanceNotice(message, error = false) {
+  $('distance-feedback').textContent = message;
+  $('distance-feedback').classList.toggle('error', error);
+}
+
+async function distanceRequest(path) {
+  const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 7000);
+  try {
+    const response = await fetch('/api/distance/' + path, {cache: 'no-store', signal: controller.signal});
+    const data = await response.json();
+    if (!response.ok) throw Error(data.error || 'Distance request failed');
+    return data;
+  } catch (error) {
+    if (error.name === 'AbortError') throw Error('Distance request timed out.');
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function renderDistance() {
+  const status = distanceStatus, ready = distanceConnected && status?.ready;
+  const busy = distanceReadFlight || status?.busy;
+  $('distance-label').textContent = !distanceConnected ? (distancePollError || status ? 'Offline' : 'Connecting') :
+    !status.enabled ? 'Disabled' : !ready ? 'Unavailable' : busy ? 'Measuring' : 'Ready';
+  $('distance-state').classList.toggle('on', Boolean(ready));
+  $('distance-samples').disabled = !ready || busy;
+  $('distance-measure').disabled = !ready || busy;
+  $('distance-measure').textContent = distanceReadFlight ? 'Measuring…' : 'Measure';
+  if (connected && state?.mode === 'preview') $('connection').textContent = status?.enabled ?
+    'Preview servo driver · Local connection' : 'Preview · no hardware access';
+}
+
+async function pollDistance() {
+  if (distancePollFlight) return distancePollFlight;
+  distancePollFlight = (async () => {
+    try {
+      distanceStatus = await distanceRequest('status');
+      distanceConnected = true;
+      if (!distanceReadFlight) {
+        if (distancePollError && $('distance-feedback').textContent === distancePollError) distanceNotice('');
+        distancePollError = !distanceStatus.enabled ? 'Distance sensor is disabled.' :
+          !distanceStatus.ready ? distanceStatus.last_error || 'Distance sensor is unavailable.' : null;
+        if (distancePollError) distanceNotice(distancePollError, distanceStatus.enabled);
+      }
+    } catch (error) {
+      distanceConnected = false;
+      distancePollError = error.message;
+      if (!distanceReadFlight) distanceNotice(error.message, true);
+    } finally {
+      distancePollFlight = null;
+      renderDistance();
+    }
+  })();
+  return distancePollFlight;
+}
+
+function showDistance(batch) {
+  const mm = value => Number.isFinite(value) ? value.toFixed(2) : '—';
+  $('distance-value').textContent = mm(batch.distance_mm);
+  $('distance-summary').textContent = batch.valid + '/' + batch.attempts + ' valid · Mean ' +
+    mm(batch.mean_mm) + ' mm · Range ' + mm(batch.min_mm) + '–' + mm(batch.max_mm) +
+    ' mm · SD ' + mm(batch.stdev_mm) + ' mm · ' + Math.round(batch.elapsed_ms) + ' ms';
+  const captured = batch.readings.at(-1)?.captured_at;
+  $('distance-time').textContent = captured ? 'Last successful batch · ' + captured : '';
+  if (captured) $('distance-time').dateTime = captured;
+  $('distance-readings').replaceChildren();
+  batch.readings.forEach((reading, index) => {
+    const row = document.createElement('tr');
+    if (reading.error) row.className = 'distance-reading-error';
+    const time = new Date(reading.captured_at).toISOString().slice(11, 23);
+    for (const value of [index + 1, time, mm(reading.distance_mm), mm(reading.pulse_us), reading.error || 'Valid']) {
+      const cell = document.createElement('td');
+      cell.textContent = value;
+      row.append(cell);
+    }
+    $('distance-readings').append(row);
+  });
+  $('distance-results').hidden = false;
+}
+
+async function measureDistance(event) {
+  event.preventDefault();
+  if (distanceReadFlight || !distanceConnected || !distanceStatus?.ready || distanceStatus.busy) return;
+  const samples = Number($('distance-samples').value);
+  if (!Number.isInteger(samples) || samples < 1 || samples > 20) {
+    distanceNotice('Use an integer sample count from 1 to 20.', true);
+    return;
+  }
+  distanceReadFlight = true;
+  distanceNotice('Measuring a fresh batch…');
+  renderDistance();
+  try {
+    const batch = await distanceRequest('read?samples=' + samples);
+    showDistance(batch);
+    distanceNotice(batch.valid + ' of ' + batch.attempts + ' readings received.', batch.valid < batch.attempts);
+  } catch (error) {
+    distanceNotice(error.message, true);
+  } finally {
+    distanceReadFlight = false;
+    renderDistance();
+    pollDistance();
+  }
+}
+
+$('distance-form').onsubmit = measureDistance;
 $('camera-settings').onsubmit = cameraSettingsSubmit;
 document.querySelectorAll('[data-camera-group]').forEach(input => input.oninput = () => {
   cameraDirty.add(input.dataset.cameraGroup);
@@ -641,3 +750,5 @@ poll();
 setInterval(poll, 500);
 pollCamera();
 setInterval(pollCamera, 1000);
+pollDistance();
+setInterval(pollDistance, 1000);

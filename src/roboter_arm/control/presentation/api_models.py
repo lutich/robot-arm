@@ -91,6 +91,49 @@ class Filename(Body):
     filename: str
 
 
+class DistanceDefaults(Body):
+    default_samples: int
+    max_samples: int
+    sample_interval_ms: int
+    echo_timeout_ms: int
+    trigger_pulse_us: int
+    sound_speed_m_s: int
+    min_mm: int
+    max_mm: int
+    gpiochip: int
+    trig_gpio: int
+    echo_gpio: int
+    aggregation: Literal['median']
+
+
+class DistanceStatus(Body):
+    enabled: bool
+    ready: bool
+    busy: bool
+    last_error: str | None
+    defaults: DistanceDefaults
+
+
+class DistanceReading(Body):
+    captured_at: str
+    pulse_us: float | None
+    distance_mm: float | None
+    error: str | None
+
+
+class DistanceBatch(Body):
+    distance_mm: float
+    mean_mm: float
+    min_mm: float
+    max_mm: float
+    stdev_mm: float
+    attempts: int
+    valid: int
+    readings: list[DistanceReading]
+    sound_speed_m_s: int
+    elapsed_ms: float
+
+
 class CameraExposure(Body):
     mode: Literal['auto', 'manual']
     time_us: int | None = None

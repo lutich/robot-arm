@@ -89,6 +89,79 @@ without replacing these settings. Arrow signs refer to command counts, not
 verified physical directions. Unknown commands or targets beyond current
 bounds are rejected without clamping or an initial positioning move.
 
+## Optional HC-SR04 distance readings
+
+Distance acquisition is disabled by default. On the Pi, opt in explicitly with
+the sensor [wired through its ECHO divider](hardware.md#hc-sr04-distance-sensor):
+
+```sh
+.venv-runtime/bin/python scripts/manual_control.py --distance-sensor hcsr04 --host 0.0.0.0
+```
+
+This command leaves servos in preview. The sensor choice is independent of
+`--hardware` and `--camera oak`; the installed service needs its own explicit
+`service.py install --distance-sensor hcsr04`. Do not run two app instances or
+a temporary GPIO tester against the same sensor.
+
+| Route | Result |
+| --- | --- |
+| `GET /api/distance/status` | Enabled, ready, busy, last error and fixed measurement defaults; no trigger pulse. |
+| `GET /api/distance/read?samples=5` | A fresh batch of 1–20 attempts; integer `samples` defaults to 5. |
+
+The read result contains median `distance_mm`, `mean_mm`, `min_mm`, `max_mm`,
+population `stdev_mm`, `attempts`, `valid`, individual `readings`, applied
+`sound_speed_m_s` and total `elapsed_ms`. Each reading retains its UTC timestamp,
+`pulse_us`, `distance_mm` and `error`; failed distances are null. Statistics use
+only valid distances. Partial batches succeed with explicit counts, so clients
+can evaluate spread and failures rather than treating the median as verified
+accuracy. Responses carry `Cache-Control: no-store`.
+
+One acquisition owner admits each batch. Another read returns 409 immediately
+without queuing; status and servo Stop remain responsive. Measurement never
+prepares, moves or stops servos. Sensor startup failure leaves the app running
+with an unavailable sensor, and recovery requires restarting it.
+
+| Software setting | Policy |
+| --- | --- |
+| Samples | Per request, 1–20; default 5 |
+| Aggregation | Median plus raw readings and statistics |
+| Trigger spacing | At least 200 ms between starts, including across requests |
+| Echo timeout | 100 ms per attempt |
+| Trigger HIGH pulse | Requested 100 µs; scheduler timing can lengthen it |
+| Sound speed | 343 m/s, without temperature compensation |
+| Accepted distance | Nominal 20–4000 mm; malformed pulses are rejected |
+| Batch deadline | Five seconds |
+| GPIO | gpiochip0, BCM23 TRIG, BCM24 ECHO |
+
+Only sample count is client-configurable in this version. The documented
+HC-SR04 interface emits a fixed 40 kHz burst; it has no documented gain,
+beam-width or frequency controls. These are software policies rather than
+programmable sensor registers. [HC-SR04 datasheet](https://cdn.sparkfun.com/datasheets/Sensors/Proximity/HCSR04.pdf)
+No calibration offset is applied. A numeric response establishes a detected
+pulse, not the accuracy of the ruler distance or robot-arm geometry.
+
+Read errors use 400 for invalid query values, 409 for another active batch,
+503 for disabled/unavailable sensors or no valid readings, and 500 for
+unexpected handler failures. They use the existing `{"error": ...}` format
+and do not invoke Session Stop. GETs need only the existing allowed Host;
+authentication, Origin and cross-origin policies are unchanged.
+
+From another client on the Pi's local network:
+
+```sh
+curl http://raspberrypi.local:8765/api/distance/status
+curl 'http://raspberrypi.local:8765/api/distance/read?samples=5'
+```
+
+```python
+import json
+from urllib.request import urlopen
+
+with urlopen("http://raspberrypi.local:8765/api/distance/read?samples=5", timeout=7) as response:
+    batch = json.load(response)
+print(batch)
+```
+
 ## Optional camera access
 
 The camera is disabled by default. Install the add-on explicitly on the Pi,
@@ -292,7 +365,7 @@ curl -X POST http://raspberrypi.local:8765/api/demo/restart \
 
 `/docs` serves Swagger UI and `/openapi.json` the OpenAPI spec, both generated
 from the running code. Swagger groups the endpoints as State, Power, Motion,
-Poses, Session settings, Demo, Camera and Bounded tests. Swagger UI loads its scripts from a CDN
+Poses, Session settings, Demo, Camera, Distance and Bounded tests. Swagger UI loads its scripts from a CDN
 (cdn.jsdelivr.net), so `/docs` needs internet on the viewing device;
 `/openapi.json` works offline. "Try it out" sends real actions, including
 `power_on` and `move` in hardware mode, without the page's readiness checkbox.
@@ -308,7 +381,7 @@ refused), and unknown fields are refused. Such a refusal reads
 | 403 | Host not allowed, or a POST without the matching `Origin` |
 | 404 | Unknown path |
 | 405 | Wrong method for a path, for example GET on an action |
-| 500 | Driver or server failure; Session actions stop first. Camera failures remain camera errors. |
+| 500 | Driver or server failure; Session actions stop first. Camera and distance failures remain independent errors. |
 
 Guard failures return 403. Invalid actions/arguments return 400. Driver/server
 failures attempt direct stop and return 500. Unknown GET paths return 404.
