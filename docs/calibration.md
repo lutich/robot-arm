@@ -1,5 +1,7 @@
 # Calibration and reference data
 
+For table-plane XY only, use the [saved mapping and manual recalibration instructions](camera-table-xy-calibration.md).
+
 For the camera approach, follow the [step-by-step measurement guide](camera-calibration-guide.md).
 It starts with servo power off and distinguishes current image access from the
 metric tracker that still needs implementing.
