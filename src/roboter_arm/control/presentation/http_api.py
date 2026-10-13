@@ -21,7 +21,9 @@ from roboter_arm.control.application.camera import CameraService
 from roboter_arm.control.application.distance import DistanceService
 from roboter_arm.control.infrastructure.demo_store import DemoStore
 from roboter_arm.control.infrastructure.drivers import PreviewDriver, HardwareDriver
+from roboter_arm.control.infrastructure.follower import CHUNK, Follower
 from roboter_arm.control.infrastructure.pose_store import PoseStore
+from roboter_arm.control.infrastructure.simulated_arm import SimulatedArm
 from roboter_arm.control.presentation import api_models as body
 from roboter_arm.control.presentation.camera_api import register as register_camera
 from roboter_arm.control.presentation.distance_api import register as register_distance
@@ -45,7 +47,8 @@ TAGS = [{'name':'State', 'description':'Read-only status; polling it never prepa
          '(manual_control.py --channels/--range), where power_on refuses. No automatic PARK/HOME move; '
          'the first move needs first_clear: true. Not used by the page.'},
         {'name':'Camera', 'description':'Read camera frames and submit supported settings; no servo commands.'},
-        {'name':'Distance', 'description':'Fresh ultrasonic distance batches and sensor status; no servo commands.'}]
+        {'name':'Distance', 'description':'Fresh ultrasonic distance batches and sensor status; no servo commands.'},
+        {'name':'Simulation', 'description':'Only on the mock controller (Preview, or --follow): its arm simulation.'}]
 # path: (Session method, request body, tag, summary). Stop is separate; see create_app.
 ACTIONS = {'power_on':('power_on', body.PowerOn, 'Power', 'Enable PARK, then move to HOME; needs fresh physical PARK/readiness'),
            'power_off':('power_off', body.Empty, 'Power', 'Return known commands to PARK, then disable all outputs'),
@@ -141,13 +144,60 @@ def action(method, model):
     return endpoint
 
 
+class Forward:
+    """Following a real controller: the page's /api/* requests go to it, except /api/sim/*."""
+    def __init__(self, app, follower):
+        self.app, self.follower = app, follower
+
+    async def __call__(self, scope, receive, send):
+        path = scope.get('path', '')
+        if scope['type'] != 'http' or not path.startswith('/api/') or path.startswith('/api/sim/'):
+            return await self.app(scope, receive, send)
+        body = b''
+        while True:
+            message = await receive()
+            body += message.get('body', b'')
+            if not message.get('more_body'):
+                break
+        query = scope.get('query_string', b'').decode()
+        try:
+            status, media_type, connection, response = await anyio.to_thread.run_sync(
+                self.follower.forward, scope['method'], path + ('?' + query if query else ''), body,
+                Headers(scope=scope).get('content-type'))
+        except OSError as error:
+            message = f'Real controller {self.follower.url} unreachable: {error}'
+            return await JSONResponse({'error':message}, 502)(scope, receive, send)
+        try:
+            await send({'type':'http.response.start', 'status':status,
+                        'headers':[(b'content-type', (media_type or 'application/octet-stream').encode())]})
+            while chunk := await anyio.to_thread.run_sync(response.read1, CHUNK):
+                await send({'type':'http.response.body', 'body':chunk, 'more_body':True})
+            await send({'type':'http.response.body', 'body':b''})
+        finally:
+            connection.close()
+
+
+# 3D arm view (web/sim_arm_view), served read-only under /sim_arm_view/. It draws what the mock
+# controller's simulation reports (/api/sim/*); a controller without one has no such routes.
+VIEW_ROOT = ROOT / 'web' / 'sim_arm_view'
+VIEW_TYPES = {'.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8',
+             '.json':'application/json', '.png':'image/png', '.jpg':'image/jpeg', '.txt':'text/plain; charset=utf-8'}
+
+
+def view_file(path):
+    file = (VIEW_ROOT / path).resolve()
+    if VIEW_ROOT.resolve() not in file.parents or not file.is_file() or file.suffix not in VIEW_TYPES:
+        raise HTTPException(404)
+    return Response(file.read_bytes(), media_type=VIEW_TYPES[file.suffix])
+
+
 def asset(name, media_type):
     def endpoint():
         return Response((ROOT / 'web' / name).read_bytes(), media_type=media_type)
     return endpoint
 
 
-def create_app(session, camera=None, *, distance=None):
+def create_app(session, camera=None, *, distance=None, follower=None):
     app = FastAPI(title='Robot arm control API', docs_url='/docs', openapi_url='/openapi.json',
                   redoc_url=None, redirect_slashes=False, openapi_tags=TAGS)
     app.state.session = session
@@ -155,7 +205,9 @@ def create_app(session, camera=None, *, distance=None):
     app.state.distance = distance if distance is not None else DistanceService()
     # Stop has its own threads, so it never queues behind requests waiting on the session lock.
     app.state.stop_threads = anyio.CapacityLimiter(2)
-    app.add_middleware(Guard)
+    if follower is not None:
+        app.add_middleware(Forward, follower=follower)
+    app.add_middleware(Guard)    # outermost: the same-origin checks apply to forwarded requests too
 
     @app.exception_handler(RequestValidationError)
     async def invalid(_request, error):
@@ -171,9 +223,20 @@ def create_app(session, camera=None, *, distance=None):
     for path, (name, media_type) in ASSETS.items():
         app.add_api_route(path, asset(name, media_type), methods=['GET'], include_in_schema=False)
 
+    app.add_api_route('/sim_arm_view/{path:path}', view_file, methods=['GET'], include_in_schema=False)
+
     @app.get('/api/state', tags=['State'], summary='Read-only session state; never prepares hardware')
     def state(request: Request):
         return request.app.state.session.state()
+
+    if isinstance(session.driver, SimulatedArm):
+        @app.get('/api/sim/model', tags=['Simulation'], summary='Dimensions and servo calibration of the arm model')
+        def sim_model(request: Request):
+            return request.app.state.session.driver.model()
+
+        @app.get('/api/sim/world', tags=['Simulation'], summary='Simulated pose, contacts and events; read only')
+        def sim_world(request: Request):
+            return request.app.state.session.driver.snapshot()
 
     @app.post('/api/stop', tags=['Power'], responses=RESPONSES,
               summary='Cancel immediately and disable outputs directly; no recovery movement')
@@ -210,8 +273,8 @@ class Uvicorn(uvicorn.Server):
 
 class Server:
     """Uvicorn on a socket bound at construction, so the port is known before serving starts."""
-    def __init__(self, session, port, host='127.0.0.1', *, camera=None, distance=None):
-        self.app = create_app(session, camera, distance=distance)
+    def __init__(self, session, port, host='127.0.0.1', *, camera=None, distance=None, follower=None):
+        self.app = create_app(session, camera, distance=distance, follower=follower)
         self.socket = socket.socket()
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.bind((host, port))
@@ -264,9 +327,13 @@ def main():
     parser.add_argument('--range', dest='ranges', action='append', default=[], metavar='CHANNEL:LOW:HIGH')
     parser.add_argument('--session-seconds', type=int, help='Optional bounded-test duration, at most 600 seconds')
     parser.add_argument('--max-moves', type=int, help='Optional bounded-test target count, at most 60')
+    parser.add_argument('--follow', metavar='URL', help='Mock controller following a real one, e.g. http://raspberrypi.local:8765: '
+                        'its arm simulation shows the real arm, and the page\'s requests go to the real controller')
     args = parser.parse_args()
     if not 1024 <= args.port <= 65535 or (args.hardware and not args.channels):
         parser.error('Port must be 1024–65535; hardware mode requires explicit --channels')
+    if args.follow and args.hardware:
+        parser.error('--follow runs the mock controller; the real one runs with --hardware')
     try:
         ranges = {}
         for value in args.ranges:
@@ -274,7 +341,11 @@ def main():
             if channel in ranges:
                 raise ValueError('Duplicate session range')
             ranges[channel] = (low, high)
-        session = session_for(HardwareDriver() if args.hardware else PreviewDriver(),
+        # Mock controller (Preview): the arm simulation is the synthetic engine and stops colliding
+        # moves; following a real controller, it only observes. Hardware: nothing is simulated.
+        driver = HardwareDriver() if args.hardware else SimulatedArm(PreviewDriver(), blocking=not args.follow, rest=PARK)
+        follower = Follower(args.follow, driver) if args.follow else None
+        session = session_for(driver,
                               args.channels if args.channels is not None else list(JOINTS),
                               directory=ROOT / 'artifacts/poses', demo_directory=ROOT / 'artifacts/demos',
                               ranges=ranges, seconds=args.session_seconds, max_moves=args.max_moves)
@@ -284,7 +355,7 @@ def main():
     from roboter_arm.control.infrastructure.hcsr04 import HCSR04
     camera = CameraService(session, CameraProcess() if args.camera == 'oak' else None)
     distance = DistanceService(HCSR04() if args.distance_sensor == 'hcsr04' else None)
-    server = Server(session, args.port, args.host, camera=camera, distance=distance)
+    server = Server(session, args.port, args.host, camera=camera, distance=distance, follower=follower)
     finished = threading.Event()
     def interrupt(_signum, _frame):
         raise KeyboardInterrupt()
@@ -296,6 +367,8 @@ def main():
             session.watchdog()
     threading.Thread(target=monitor, daemon=True).start()
     preview = 'PREVIEW servo driver' if args.distance_sensor else 'PREVIEW, no hardware'
+    if follower:
+        preview = f'MOCK following {follower.url}; requests go to it'
     print(f'{"HARDWARE commissioning" if args.hardware else preview}: http://{args.host}:{args.port}', flush=True)
     print('No startup PWM. Direct stop disables holding torque; keep support and power switch ready.', flush=True)
     if args.camera:
@@ -305,11 +378,15 @@ def main():
     try:
         distance.start()
         camera.start()
+        if follower:
+            follower.start()
         server.run()
     except KeyboardInterrupt:
         pass
     finally:
         finished.set()
+        if follower:
+            follower.stop()
         try:
             stopped = session.close()
         finally:

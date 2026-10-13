@@ -11,6 +11,7 @@ let cameraDraft = null, cameraFormKey = '', cameraLastError = null;
 const cameraDirty = new Set();
 let distanceStatus = null, distanceConnected = false, distancePollFlight = null;
 let distanceReadFlight = false, distancePollError = null;
+let simulation = null, simulationLoad = null;
 
 function notice(message, error = false) {
   $('notice').textContent = message;
@@ -214,6 +215,7 @@ async function poll() {
       if (state.error && state.error !== lastError) notice(state.error, true);
       lastError = state.error;
       render();
+      renderSimulationState();
     } catch (error) {
       connected = false;
       $('ready').checked = false;
@@ -746,9 +748,48 @@ $('load-confirm').onclick = async () => {
   if (data) $('load-dialog').close();
 };
 
+// Arm simulation: three.js is large, so the view loads when the section first opens, and it
+// polls the mock controller's /api/sim/world only while open.
+function renderSimulationState() {
+  simulation?.onState(state);
+  if (!simulation || !$('sim-section').open) setSimulationState('Closed', false);
+}
+
+function setSimulationState(label, ok) {
+  $('sim-label').textContent = label;
+  $('sim-state').classList.toggle('on', ok);
+}
+
+async function loadSimulation() {
+  const response = await fetch('/api/sim/model', {cache: 'no-store'});
+  if (!response.ok) throw Error('this controller has no arm simulation. Run the mock controller: '
+    + 'manual_control.py (Preview) or manual_control.py --follow http://<pi>:8765');
+  const module = await import('/sim_arm_view/sim_arm_view.js');
+  return module.start({onStatus: setSimulationState, notice});
+}
+
+$('sim-section').addEventListener('toggle', async () => {
+  const open = $('sim-section').open;
+  if (open && !simulation) {
+    setSimulationState('Loading', false);
+    try {
+      simulation = await (simulationLoad ??= loadSimulation());
+      simulation.onState(state);
+    } catch (error) {
+      simulationLoad = null;
+      setSimulationState('Unavailable', false);
+      $('sim-readout').textContent = `Simulation unavailable: ${error.message}`;
+      return;
+    }
+  }
+  simulation?.setOpen($('sim-section').open);
+  if (!$('sim-section').open && state) renderSimulationState();
+});
+
 poll();
 setInterval(poll, 500);
 pollCamera();
 setInterval(pollCamera, 1000);
 pollDistance();
 setInterval(pollDistance, 1000);
+

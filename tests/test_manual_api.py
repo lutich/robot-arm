@@ -18,6 +18,8 @@ import urllib.request
 from fastapi.routing import APIRoute
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
+from roboter_arm.control.infrastructure.follower import Follower
+from roboter_arm.control.infrastructure.simulated_arm import SimulatedArm
 from roboter_arm.control.presentation import http_api as app
 from roboter_arm.control.presentation.camera_api import CAMERA_PATHS
 from roboter_arm.control.presentation.distance_api import DISTANCE_PATHS
@@ -273,6 +275,9 @@ class ManualAPITests(unittest.TestCase):
             self.assertEqual(self.request('POST', '/api/demo/restart', {}), (500, {'error':app.FAILURE}))
         stop.assert_called_once_with(app.FAILURE)
 
+    def test_plain_driver_state_has_no_simulation(self):
+        self.assertNotIn('simulation', self.request('GET', '/api/state')[1])
+
     def test_docs_and_openapi_describe_exactly_the_api(self):
         status, page = self.request('GET', '/docs')
         self.assertEqual(status, 200)
@@ -318,6 +323,92 @@ class ManualAPITests(unittest.TestCase):
                 reader.join()
         self.assertEqual(status, 200)
         self.assertLess(elapsed, 1)
+
+
+class SimulationAPITests(unittest.TestCase):
+    """The mock controller: /api/sim/* exists only with the simulated driver; --follow forwards to a real one."""
+    def serve(self, driver, follower=None):
+        directory = tempfile.TemporaryDirectory(prefix='robot-sim-api-')
+        self.addCleanup(directory.cleanup)
+        time_ = FakeTime()
+        root = Path(directory.name)
+        session = app.session_for(driver, list(range(6)), directory=root / 'poses',
+                                  demo_directory=root / 'demos', clock=time_.clock, sleep=time_.sleep)
+        self.addCleanup(session.close)
+        server = app.Server(session, 0, follower=follower)
+        server.start()
+        self.addCleanup(server.stop)
+        return session, server.server_address[1]
+
+    def request(self, port, method, path, data=None):
+        headers = {'Origin':f'http://127.0.0.1:{port}', 'Content-Type':'application/json'} if method == 'POST' else {}
+        connection = http.client.HTTPConnection('127.0.0.1', port, timeout=5)
+        connection.request(method, path, json.dumps(data).encode() if data is not None else None, headers)
+        response = connection.getresponse()
+        body, content_type = response.read(), response.getheader('Content-Type')
+        connection.close()
+        return response.status, json.loads(body) if content_type == 'application/json' else (content_type, body)
+
+    def test_preview_mock_reports_its_simulation(self):
+        _, port = self.serve(SimulatedArm(app.PreviewDriver(), blocking=True, rest=app.PARK))
+        status, model = self.request(port, 'GET', '/api/sim/model')
+        self.assertEqual(status, 200)
+        self.assertEqual([servo['name'] for servo in model['servos']], ['S1', 'S2', 'S3', 'S4', 'S5', 'S6'])
+        status, world = self.request(port, 'GET', '/api/sim/world')
+        self.assertEqual((status, world['mode']), (200, 'synthetic'))
+        self.assertEqual(world['counts'], [app.PARK[c] for c in range(6)])
+        self.assertTrue(world['resting'])
+        paths = self.request(port, 'GET', '/openapi.json')[1]['paths']
+        self.assertIn('/api/sim/world', paths)
+        self.assertNotIn('simulation', self.request(port, 'GET', '/api/state')[1])
+
+    def test_a_controller_without_simulation_has_no_simulation_api(self):
+        _, port = self.serve(app.PreviewDriver())
+        for path in ('/api/sim/world', '/api/sim/model'):
+            with self.subTest(path=path):
+                self.assertEqual(self.request(port, 'GET', path)[0], 404)
+
+    def test_following_mock_forwards_to_the_real_controller_and_simulates_its_arm(self):
+        real, real_port = self.serve(app.PreviewDriver())
+        arm = SimulatedArm(app.PreviewDriver(), blocking=False, rest=app.PARK)
+        follower = Follower(f'http://127.0.0.1:{real_port}', arm)
+        mock, port = self.serve(arm, follower)
+        self.assertEqual(self.request(port, 'GET', '/api/state')[1], self.request(real_port, 'GET', '/api/state')[1])
+        self.assertEqual(self.request(port, 'POST', '/api/power_on', {'park_confirmed':True})[0], 200)
+        real.worker.join(timeout=5)
+        self.assertIsNone(mock.worker)
+        self.assertEqual(real.state()['commands'], app.HOME)
+        follower.poll()
+        world = self.request(port, 'GET', '/api/sim/world')[1]
+        self.assertEqual((world['mode'], world['following']), ('following', f'http://127.0.0.1:{real_port}'))
+        self.assertEqual(world['counts'], [app.HOME[c] for c in range(6)])
+        self.assertEqual(self.request(port, 'POST', '/api/stop', {})[0], 200)
+        self.assertTrue(real.state()['outputs_off'])
+        self.assertEqual(self.request(port, 'GET', '/api/state', None)[0], 200)
+        self.assertEqual(self.request(port, 'POST', '/api/power_on', {'park_confirmed':'yes'})[0], 400)
+
+    def test_following_an_unreachable_controller_answers_502(self):
+        with socket.socket() as probe:
+            probe.bind(('127.0.0.1', 0))
+            free = probe.getsockname()[1]
+        arm = SimulatedArm(app.PreviewDriver(), blocking=False, rest=app.PARK)
+        _, port = self.serve(arm, Follower(f'http://127.0.0.1:{free}', arm))
+        status, data = self.request(port, 'GET', '/api/state')
+        self.assertEqual(status, 502)
+        self.assertIn('unreachable', data['error'])
+        self.assertEqual(self.request(port, 'GET', '/api/sim/world')[0], 200)
+
+    def test_viewer_files_are_served_read_only_and_nothing_outside(self):
+        _, port = self.serve(app.PreviewDriver())
+        status, (content_type, body) = self.request(port, 'GET', '/sim_arm_view/sim_arm_view.js')
+        self.assertEqual((status, content_type), (200, 'text/javascript; charset=utf-8'))
+        self.assertIn(b'/api/sim/world', body)
+        self.assertEqual(self.request(port, 'GET', '/sim_arm_view/ref/camera-2026-10-12.jpg')[1][0], 'image/jpeg')
+        for path in ('/sim_arm_view/', '/sim_arm_view/model', '/sim_arm_view/%2e%2e/manual_control.js', '/sim_arm_view/..%2f..%2fpyproject.toml',
+                     '/sim_arm_view/vendor/../../manual_control.html'):
+            with self.subTest(path=path):
+                self.assertEqual(self.request(port, 'GET', path)[0], 404)
+        self.assertEqual(self.request(port, 'POST', '/sim_arm_view/sim_arm_view.js', {})[0], 405)
 
 
 class ProcessTests(unittest.TestCase):

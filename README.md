@@ -53,6 +53,39 @@ Open **http://127.0.0.1:8765/**. Read-only API state is at
 **http://127.0.0.1:8765/api/state**. Preview simulates commands and writes
 synthetic records; it is not a physics simulator.
 
+### Arm simulation
+
+Section 03 of the page, below Joint control, draws the arm in 3D (`web/sim_arm_view`).
+It is a view only: everything it shows comes from the API of the *mock controller*, which
+is `manual_control.py` without `--hardware`. The mock runs the arm model in
+`src/roboter_arm/sim` behind its servo driver and reports it on
+`GET /api/sim/model` (dimensions, servo calibration) and `GET /api/sim/world`
+(pose, contacts, events). A controller started with `--hardware` simulates
+nothing and has no `/api/sim/*`.
+
+- **Preview** (`manual_control.py`): the simulation is the synthetic arm. A
+  command that would drive it into the board or into itself is refused before
+  it is applied, and the session stops with outputs off
+  (`Move stopped: SimulatedCollision`). Fingers pressing up to 2 cm onto the
+  board only count as *pressing*: a real servo stops short of its command there.
+- **Following the real arm** (`manual_control.py --follow http://<pi>:8765`):
+  open the mock's page, http://127.0.0.1:8765/. Every `/api/*` request from
+  the page goes on to the real controller, so this page controls the real arm.
+  The mock reads the real `/api/state` ten times a second and its simulation
+  follows those commands. Contacts are only shown, never stop the real arm,
+  because the servo calibration (`q_ref`, `direction` in
+  `src/roboter_arm/sim/domain/arm_model.json`) is not measured.
+
+```sh
+uv run --locked python scripts/manual_control.py --follow http://raspberrypi.local:8765
+```
+
+The model can hold cubes (grasp, carry, release onto a stack, no physics), but
+nothing places them yet. The section also holds the camera tools: simulated OAK
+view, calibration from the mat markers and cube recognition. They read
+`/api/camera/*`, which the mock forwards when following, and fall back to a
+saved frame without a camera.
+
 ## Connect and deploy
 
 Configure `.pi.json` from `pi.example.json`. Provision SSH authentication and

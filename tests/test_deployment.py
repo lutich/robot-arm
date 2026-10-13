@@ -75,7 +75,10 @@ class DeploymentTests(unittest.TestCase):
     def test_every_pi_runtime_module_is_in_the_manifest(self):
         root = Path(__file__).resolve().parents[1]
         runtime = {'src/roboter_arm/__init__.py'} | {str(path.relative_to(root))
-            for context in ('shared', 'control', 'calibration') for path in (root/'src/roboter_arm'/context).rglob('*.py')}
+            for context in ('shared', 'control', 'calibration', 'sim') for path in (root/'src/roboter_arm'/context).rglob('*.py')}
+        # the arm model's data and the simulation viewer are read from the checkout too
+        runtime |= {str(path.relative_to(root)) for path in (root/'src/roboter_arm/sim').rglob('*.json')}
+        runtime |= {str(path.relative_to(root)) for path in (root/'web/sim_arm_view').rglob('*') if path.is_file()}
         self.assertEqual(sorted(runtime - set(deployment.manifest())), [])
 
     def test_full_manifest_deploys_and_retains_existing_operational_data(self):
