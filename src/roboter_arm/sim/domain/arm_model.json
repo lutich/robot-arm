@@ -1,0 +1,17 @@
+{
+  "arm": {"H_S2": 9.6, "L2": 10.5, "L3": 12.6, "L4": 6.7, "G_BLOCK": 11.0},
+  "board": {"w": 30, "d": 38, "t": 1.0, "axisToBackEdge": 1.5},
+  "cube": 2.65,
+  "gripper": {"gear": [0.85, 1.4], "outer": [2.2, 1.9], "link": 3.5, "tip": [-1.515, 6.664], "pad": {"h": 1.2, "t": 0.27, "w": 1.0}, "plate": {"w": 6.4, "h": 2.4, "t": 0.4}, "thetaOpen": 56.4, "thetaClosed": 11.0},
+  "servos": [
+    {"ch": 0, "name": "S1", "joint": "Base rotation", "ref": 320, "low": 90, "high": 660, "span": [260, 85], "q_ref": 0, "direction": -1},
+    {"ch": 1, "name": "S2", "joint": "Shoulder", "ref": 427, "low": 185, "high": 660, "span": [220, 90], "q_ref": 6, "direction": -1},
+    {"ch": 2, "name": "S3", "joint": "Elbow", "ref": 403, "low": 90, "high": 660, "span": [240, 90], "q_ref": 62, "direction": 1},
+    {"ch": 3, "name": "S4", "joint": "Wrist flexion", "ref": 220, "low": 90, "high": 660, "span": [250, 90], "q_ref": 84, "direction": -1},
+    {"ch": 4, "name": "S5", "joint": "Wrist rotation", "ref": 250, "low": 90, "high": 660, "span": [230, 90], "q_ref": 90, "direction": -1},
+    {"ch": 5, "name": "S6", "joint": "Gripper", "ref": 550, "low": 490, "high": 660, "open": 490, "closed": 650}
+  ],
+  "clearance": 0.05,
+  "press_depth": 2.0,
+  "rest_zone": 25
+}

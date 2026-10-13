@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Robot arm · Manual control</title>
 <link rel="stylesheet" href="/manual_control.css">
+<script type="importmap">{"imports":{"three":"/sim_arm_view/vendor/three.module.min.js"}}</script>
 <script src="/manual_control.js" defer></script>
 </head>
 <body>
@@ -71,8 +72,64 @@
 </section>
 </div>
 </details>
+<details class="accordion" id="sim-section">
+<summary><span class="number">03</span><span class="section-title">Arm simulation</span><span class="state" id="sim-state"><span class="dot"></span><span id="sim-label">Closed</span></span><span class="chevron" aria-hidden="true"></span></summary>
+<div class="sim-layout">
+<div class="sim-view">
+<div class="sim-stage"><canvas id="sim-canvas"></canvas><p class="sim-contacts" id="sim-contacts" role="status" hidden></p></div>
+<div class="sim-toolbar">
+<div class="sim-views" role="group" aria-label="View"><button class="secondary on" data-sim-view="orbit">Orbit</button><button class="secondary" data-sim-view="top">Top</button><button class="secondary" data-sim-view="side">Side</button><button class="secondary" data-sim-view="oak">OAK camera</button></div>
+<label class="sim-check"><input type="checkbox" id="sim-show-path" checked> Path</label>
+<label class="sim-check"><input type="checkbox" id="sim-show-shapes"> Collision shapes</label>
+</div>
+<p class="camera-caption" id="sim-readout">Loading the simulation…</p>
+<p class="camera-caption">Path: blue is the gripper's trace of the last 20 s, orange the loaded demo's positions.</p>
+</div>
+<div class="sim-controls">
+<p class="camera-profile" id="sim-mode"></p>
+<div class="sim-group">
+<h3>Events</h3>
+<ol class="sim-log" id="sim-log"></ol>
+</div>
+</div>
+</div>
+<details class="sim-camera" id="sim-camera">
+<summary>Camera &amp; vision <small>simulated OAK view, marker calibration, cube recognition</small></summary>
+<div class="sim-camera-layout">
+<div>
+<div class="cam-stage"><canvas id="cam-sim" width="960" height="540"></canvas><img id="cam-photo" alt="" style="opacity:0.5"><canvas id="cam-overlay"></canvas></div>
+<div class="camera-actions">
+<select id="cam-source" aria-label="Frame source"><option value="saved">Saved frame, 2026-10-12</option><option value="live">Live snapshot (read only)</option><option value="video">Live video (read only, stops after 10 min)</option><option value="file">Image file…</option></select>
+<button class="secondary" id="cam-refresh" disabled>Refresh snapshot</button>
+<input id="cam-file" type="file" accept="image/*" hidden>
+<label class="sim-check">Real frame <input id="cam-opacity" type="range" min="0" max="100" value="50"></label>
+</div>
+<p class="camera-caption" id="cam-status"></p>
+<div class="camera-actions"><label class="sim-check"><input type="checkbox" id="cam-show-sim" checked> Simulation</label><label class="sim-check"><input type="checkbox" id="cam-show-marks" checked> Markers</label><label class="sim-check"><input type="checkbox" id="cam-show-grid" checked> Mat grid &amp; axes</label></div>
+</div>
+<div>
+<div class="sim-group">
+<h3>Calibration <small>camera pose and focal length from the mat markers</small></h3>
+<div class="camera-actions"><button class="primary" id="cam-auto">Find markers &amp; calibrate</button><label class="sim-check"><input type="checkbox" id="cam-auto-on" checked> On every new frame</label><label class="sim-check"><input type="checkbox" id="cam-keep"> While tracking</label></div>
+<p class="camera-caption" id="cam-pick-hint"></p>
+<table id="cam-params" class="sim-params"></table>
+<details class="sim-sub"><summary>Manual calibration</summary>
+<div class="camera-actions"><button class="secondary" id="cam-pick">Pick marker centres</button><button class="secondary" id="cam-skip">Skip marker</button><button class="secondary" id="cam-clear">Clear points</button><button class="secondary" id="cam-solve">Solve</button><button class="secondary" id="cam-use-saved">Corners of the saved frame</button><button class="secondary" id="cam-reset">Reset to default fit</button><button class="secondary" id="cam-copy">Copy parameters</button></div>
+</details>
+</div>
+<div class="sim-group">
+<h3>Cube recognition <small>cubes lying on the mat</small></h3>
+<div class="camera-actions"><button class="primary" id="cam-detect">Find cubes</button></div>
+<div class="camera-actions"><label class="sim-check"><input type="checkbox" id="cam-track"> Track continuously</label><label class="sim-check">every <select id="cam-track-rate"><option value="2000">2 s</option><option value="1000" selected>1 s</option><option value="500">0,5 s</option><option value="200">0,2 s</option></select></label></div>
+<p class="camera-caption" id="cam-track-stats"></p>
+<div class="camera-caption" id="cam-detections"></div>
+</div>
+</div>
+</div>
+</details>
+</details>
 <details class="accordion" id="camera-section" open>
-<summary><span class="number">03</span><span class="section-title">Camera</span><span class="state" id="camera-state"><span class="dot"></span><span id="camera-label">Connecting</span></span><span class="chevron" aria-hidden="true"></span></summary>
+<summary><span class="number">04</span><span class="section-title">Camera</span><span class="state" id="camera-state"><span class="dot"></span><span id="camera-label">Connecting</span></span><span class="chevron" aria-hidden="true"></span></summary>
 <div class="camera-layout">
 <div class="camera-view">
 <div class="camera-selector"><label for="camera-display">Display</label><select id="camera-display" disabled><option value="rgb">RGB</option><option id="camera-depth-option" value="depth" disabled>Depth preview</option></select></div>
@@ -96,7 +153,7 @@
 </div>
 </details>
 <details class="accordion" id="distance-section" open>
-<summary><span class="number">04</span><span class="section-title">Distance</span><span class="state" id="distance-state"><span class="dot"></span><span id="distance-label">Connecting</span></span><span class="chevron" aria-hidden="true"></span></summary>
+<summary><span class="number">05</span><span class="section-title">Distance</span><span class="state" id="distance-state"><span class="dot"></span><span id="distance-label">Connecting</span></span><span class="chevron" aria-hidden="true"></span></summary>
 <div class="distance-layout">
 <div class="distance-controls">
 <form class="distance-form" id="distance-form"><label for="distance-samples">Samples<input id="distance-samples" type="number" min="1" max="20" step="1" value="5" required disabled></label><button class="primary" id="distance-measure" type="submit" disabled>Measure</button></form>
