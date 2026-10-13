@@ -16,6 +16,13 @@ export const GRIPPER = model.gripper;
 // cpd = counts per degree.
 export const SERVOS = model.servos.map(s => ({ ...s, home: s.ref, qHome: s.q_ref ?? 0, dir: s.direction ?? 1, cpd: s.span ? s.span[0] / s.span[1] : null }));
 
+// Two 90 x 42 x 25 mm U-beams form the raised base fixture. Each beam has a lower and upper
+// horizontal plate with an open cavity between them. Drawing only; the simulation does not use it.
+export const BASE = {
+  w: 9.0, beamD: 4.0, h: 2.5, plateT: 0.2,
+  offsetY: 2.2, beamY: 2.12, webY: 0.13, webT: 0.2,
+};
+
 // Printed ArUco mat (config/camera-table-xy). Camera table frame: origin at the middle of the
 // mat edge nearest the arm, +X away from the arm, +Y to the arm's left, mm.
 // Board frame: x = -Y/10, y = X/10 + d.

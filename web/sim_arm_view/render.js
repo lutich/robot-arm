@@ -29,7 +29,7 @@ function gradientBackground() {
   const c = document.createElement('canvas'); c.width = 4; c.height = 512;
   const g = c.getContext('2d');
   const grad = g.createLinearGradient(0, 0, 0, 512);
-  grad.addColorStop(0, '#eef1f4'); grad.addColorStop(0.6, '#f7f8f9'); grad.addColorStop(1, '#ffffff');
+  grad.addColorStop(0, '#17232d'); grad.addColorStop(0.58, '#101820'); grad.addColorStop(1, '#070b10');
   g.fillStyle = grad; g.fillRect(0, 0, 4, 512);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
   return t;

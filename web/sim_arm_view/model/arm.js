@@ -3,7 +3,7 @@
 // horn and claw shapes follow the photos and the kit drawings.
 
 import * as THREE from 'three';
-import { ARM } from '../config.js';
+import { ARM, BASE } from '../config.js';
 import { V, at, orient, box, cyl, plate, hornHoles, bake, joint } from './geometry.js';
 import { screwAt, nut, servo, horn, sidePlate, bend, zipTie } from './parts.js';
 import { buildGripper } from './gripper.js';
@@ -20,7 +20,7 @@ export const PCA = { foam: 1.1, y: -0.1, z: 4.3, face: -2.7 - 1.1 - 0.16 };
 export const pcaHeaderZ = k => -2.5 + k * 0.254 + Math.floor(k / 4) * 0.33;
 
 /** Centre of the 9 x 8,4 base plate relative to the S1 axis (cm, +Y forward). */
-export const BASE_OFFSET_Y = 2.2;
+export const BASE_OFFSET_Y = BASE.offsetY;
 
 function buildPca(M) {
   const g = new THREE.Group(); at(g, 0, PCA.y, PCA.z);
@@ -64,7 +64,7 @@ export function buildArm(M) {
   // ---- static base: two "U beam" brackets, 90 x 42 x 25 mm (docs/images/web/bracket-u-beam-base-dimensions.jpg),
   // lying on their sides with the webs back to back in the middle: legs form the 9 x 8,4 top and
   // bottom plates, the meeting webs form the centre groove, the open sides face front and back.
-  const H = 2.5;
+  const H = BASE.h;
   const base = new THREE.Group(); root.add(base);
   // The plate is not centred on S1: the S1 servo stands at its back, the plate reaches forward
   // over the mat (photos/base-shoulder-closeup.jpg, photos/setup-top-view-base.jpg).
@@ -72,11 +72,11 @@ export function buildArm(M) {
   const legHoles = sy => [-3.475, 0, 3.475].flatMap(x => hornHoles(x, sy * 0.908))
     .concat([[-1.375, sy * 1.608, 0.15], [1.375, sy * 1.608, 0.15], [-4.0, sy * 1.608, 0.15], [4.0, sy * 1.608, 0.15]]);
   for (const sy of [-1, 1]) {
-    const yc = sy * 2.12;
-    for (const z of [0.1, H - 0.1]) { const p = plate(9.0, 4.0, 0.2, M.anodised, legHoles(sy), 0.5); at(p, 0, yc, z); plates.add(p); }
-    const web = plate(9.0, H - 0.3, 0.2, M.anodised, [-3.475, 0, 3.475].map(x => [x, 0, 0.4]), 0.05);
-    orient(web, V(1, 0, 0), V(0, 0, 1), V(0, -1, 0)); at(web, 0, sy * 0.13, H / 2); plates.add(web);
-    for (const z of [0.15, H - 0.15]) { const bd = bend(M, 9.0, 'x'); at(bd, 0, sy * 0.2, z); plates.add(bd); }
+    const yc = sy * BASE.beamY;
+    for (const z of [BASE.plateT / 2, H - BASE.plateT / 2]) { const p = plate(BASE.w, BASE.beamD, BASE.plateT, M.anodised, legHoles(sy), 0.5); at(p, 0, yc, z); plates.add(p); }
+    const web = plate(BASE.w, H - 0.3, BASE.webT, M.anodised, [-3.475, 0, 3.475].map(x => [x, 0, 0.4]), 0.05);
+    orient(web, V(1, 0, 0), V(0, 0, 1), V(0, -1, 0)); at(web, 0, sy * BASE.webY, H / 2); plates.add(web);
+    for (const z of [0.15, H - 0.15]) { const bd = bend(M, BASE.w, 'x'); at(bd, 0, sy * 0.2, z); plates.add(bd); }
     for (const x of [-4.0, 4.0]) {
       const so = cyl(0.2, H - 0.4, M.screw, 'z', 6); at(so, x, yc + sy * 1.4, H / 2); plates.add(so);
       for (const z of [-0.02, H + 0.02]) screwAt(plates, M, V(x, yc + sy * 1.4, z), V(0, 0, z > 0 ? 1 : -1), 0.17);

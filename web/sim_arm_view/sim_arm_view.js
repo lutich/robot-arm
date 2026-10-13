@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { createView } from './render.js';
 import { MAT, CAMERA } from './config.js';
 import { fk, anglesFromCounts } from './kinematics.js';
-import { makeMaterials, buildArm, buildTable, buildCamera } from './model/index.js';
+import { makeMaterials, buildArm, buildTable, buildCamera, buildCube } from './model/index.js';
 import { initCameraTab, defaultCalibration, applyPinhole, tableToBoard } from './camview.js';
 
 const $ = id => document.getElementById(id);
@@ -46,6 +46,20 @@ export function start(ctx) {
     table.userData.placeMat(MAT.sToEdge);
     if (oak) scene.remove(oak);
     const p = camPose(); oak = buildCamera(M, p.pos, p.target);
+    // viewing pyramid: rays through the four image corners down to the desk (at most 1,5 m)
+    const cal = CAMERA.calib, C = tableToBoard(cal.centre), pts = [];
+    for (const [u, v] of [[0, 0], [CAMERA.w, 0], [CAMERA.w, CAMERA.h], [0, CAMERA.h]]) {
+      const d = [(u - cal.cx) / cal.f, (v - cal.cy) / cal.f, 1];
+      const wd = [0, 1, 2].map(i => cal.R[0][i] * d[0] + cal.R[1][i] * d[1] + cal.R[2][i] * d[2]);   // ray in the mat frame
+      const s = wd[2] < -1e-6 ? Math.min((-10 - cal.centre[2]) / wd[2], 1500 / Math.hypot(...wd)) : 1500 / Math.hypot(...wd);   // desk is 10 mm below the mat
+      pts.push(tableToBoard(cal.centre.map((c, i) => c + s * wd[i])));
+    }
+    const seg = [];
+    for (let i = 0; i < 4; i++) seg.push(...C, ...pts[i], ...pts[i], ...pts[(i + 1) % 4]);
+    const frustum = new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(seg, 3)),
+      new THREE.LineBasicMaterial({ color: 0x0e8a77, transparent: true, opacity: 0.55 }));
+    frustum.name = 'camera-frustum';
+    oak.add(frustum);
     scene.add(oak);
   }
   placeMatAndCamera();
@@ -86,6 +100,19 @@ export function start(ctx) {
       }
     }
     for (const [n, m] of shapeMeshes) if (!used.has(n)) m.visible = false;
+  }
+
+  // ---------------- cubes from the simulation ----------------
+  const cubeMeshes = new Map();
+  function syncCubeMeshes(cubes) {
+    for (const [id, m] of cubeMeshes) if (!cubes.some(c => c.id === id)) { scene.remove(m); cubeMeshes.delete(id); }
+    for (const c of cubes) {
+      let m = cubeMeshes.get(c.id);
+      if (!m) { m = buildCube(c.colour); cubeMeshes.set(c.id, m); scene.add(m); }
+      m.position.set(...c.p);
+      if (c.R) m.setRotationFromMatrix(rotation(c.R));
+      else m.rotation.set(0, 0, c.yaw * Math.PI / 180);
+    }
   }
 
   // ---------------- path: gripper trace and the demo's positions ----------------
@@ -231,6 +258,7 @@ export function start(ctx) {
     if (!oakView && controls.update()) needsRender = true;
     if (needsRender && world) {
       arm.setPose(anglesFromCounts(pose), gap);
+      syncCubeMeshes(world.cubes);
       // resting on the base is expected, like pressing: amber, not red
       updateShapes(world.shapes, world.contacts.map(k => ({ ...k, pressing: k.pressing || world.resting })), $('sim-show-shapes').checked);
       if (backdrop) backdrop.visible = camera.position.y > backdrop.position.y + 2;
