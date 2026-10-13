@@ -12,6 +12,7 @@ const cameraDirty = new Set();
 let distanceStatus = null, distanceConnected = false, distancePollFlight = null;
 let distanceReadFlight = false, distancePollError = null;
 let simulation = null, simulationLoad = null;
+let planning = null, planningLoad = null;
 
 function notice(message, error = false) {
   $('notice').textContent = message;
@@ -748,11 +749,13 @@ $('load-confirm').onclick = async () => {
   if (data) $('load-dialog').close();
 };
 
-// Arm simulation: three.js is large, so the view loads when the section first opens, and it
-// polls the mock controller's /api/sim/world only while open.
+// 3D arm viewer: three.js is large, so the view loads when the section first opens, and it
+// polls the mock controller's /api/sim/world only while open. Trajectory planning loads the same way.
 function renderSimulationState() {
   simulation?.onState(state);
   if (!simulation || !$('sim-section').open) setSimulationState('Closed', false);
+  planning?.onState(state);
+  if (!planning || !$('plan-section').open) setPlanningState('Closed', false);
 }
 
 function setSimulationState(label, ok) {
@@ -784,6 +787,41 @@ $('sim-section').addEventListener('toggle', async () => {
   }
   simulation?.setOpen($('sim-section').open);
   if (!$('sim-section').open && state) renderSimulationState();
+});
+
+// Trajectory planning: the mock controller plans and rehearses a task (POST /api/sim/plan); the
+// section plays the result back and sends no servo command.
+function setPlanningState(label, ok) {
+  $('plan-label').textContent = label;
+  $('plan-state').classList.toggle('on', ok);
+}
+
+async function loadPlanning() {
+  const response = await fetch('/api/sim/planning', {cache: 'no-store'});
+  const data = await response.json().catch(() => ({}));
+  if (response.status === 404) throw Error('this controller has no trajectory planning. Run the mock controller: '
+    + 'manual_control.py (Preview) or manual_control.py --follow http://<pi>:8765');
+  if (!response.ok) throw Error(data.error || `HTTP ${response.status}`);
+  const module = await import('/trajectory_planning/trajectory_planning.js');
+  return module.start({onStatus: setPlanningState, notice, defaults: data});
+}
+
+$('plan-section').addEventListener('toggle', async () => {
+  const open = $('plan-section').open;
+  if (open && !planning) {
+    setPlanningState('Loading', false);
+    try {
+      planning = await (planningLoad ??= loadPlanning());
+      planning.onState(state);
+    } catch (error) {
+      planningLoad = null;
+      setPlanningState('Unavailable', false);
+      $('plan-step').textContent = `Trajectory planning unavailable: ${error.message}`;
+      return;
+    }
+  }
+  planning?.setOpen($('plan-section').open);
+  if (!$('plan-section').open && state) renderSimulationState();
 });
 
 poll();

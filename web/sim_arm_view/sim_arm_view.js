@@ -1,71 +1,24 @@
-// "Arm simulation" section of the manual control page. It draws what the mock controller's
+// "3D arm viewer" section of the manual control page. It draws what the mock controller's
 // arm simulation reports (GET /api/sim/model and /api/sim/world): the synthetic arm in
 // Preview, or the real arm while the mock follows a real controller (--follow). Every number
 // comes from the API. A view only: it sends nothing.
 
 import * as THREE from 'three';
-import { createView } from './render.js';
-import { MAT, CAMERA } from './config.js';
 import { fk, anglesFromCounts } from './kinematics.js';
-import { makeMaterials, buildArm, buildTable, buildCamera, buildCube } from './model/index.js';
-import { initCameraTab, defaultCalibration, applyPinhole, tableToBoard } from './camview.js';
+import { initCameraTab } from './camview.js';
+import { createArmScene, cameraCalibration, saveCameraCalibration, rotation } from './scene.js';
 
 const $ = id => document.getElementById(id);
 const fmt = (v, d = 1) => v.toFixed(d).replace('-0.0', '0.0');
 const TRACE_SECONDS = 20;
-const CAM_KEY = 'roboter-arm.sim.camera.v1';
 
 /** ctx: { onStatus(label, ok), notice(text, error) }. Returns { setOpen(open), onState(state) }. */
 export function start(ctx) {
-  let needsRender = true, last = performance.now(), frameId = null;
-
-  // ---------------- renderer ----------------
-  const canvas = $('sim-canvas');
-  const view = createView(canvas);
-  const { scene, camera, controls } = view;
-  camera.position.set(-30, 50, 30);
-  controls.target.set(0, 11, 7);
-  controls.update();
-
-  const M = makeMaterials();
-  const table = buildTable(M); scene.add(table);
-  const backdrop = table.getObjectByName('backdrop');
-  const arm = buildArm(M); scene.add(arm.root);
-
-  // The OAK camera, fitted to the mat markers (camview.js); the fit is kept per browser.
-  CAMERA.calib = defaultCalibration();
-  try { const c = JSON.parse(localStorage.getItem(CAM_KEY)); if (c && c.R && c.f) CAMERA.calib = c; } catch { /* default fit */ }
-  let oak = null;
-  const camPose = () => {
-    const cal = CAMERA.calib, C = cal.centre, z = cal.R[2];
-    const s = -C[2] / z[2];                                   // optical axis meets the mat
-    return { pos: tableToBoard(C), target: tableToBoard([C[0] + s * z[0], C[1] + s * z[1], 0]) };
-  };
-  const hideForCamera = fn => { const v = oak.visible; oak.visible = false; fn(); oak.visible = v; };
-  function placeMatAndCamera() {
-    table.userData.placeMat(MAT.sToEdge);
-    if (oak) scene.remove(oak);
-    const p = camPose(); oak = buildCamera(M, p.pos, p.target);
-    // viewing pyramid: rays through the four image corners down to the desk (at most 1,5 m)
-    const cal = CAMERA.calib, C = tableToBoard(cal.centre), pts = [];
-    for (const [u, v] of [[0, 0], [CAMERA.w, 0], [CAMERA.w, CAMERA.h], [0, CAMERA.h]]) {
-      const d = [(u - cal.cx) / cal.f, (v - cal.cy) / cal.f, 1];
-      const wd = [0, 1, 2].map(i => cal.R[0][i] * d[0] + cal.R[1][i] * d[1] + cal.R[2][i] * d[2]);   // ray in the mat frame
-      const s = wd[2] < -1e-6 ? Math.min((-10 - cal.centre[2]) / wd[2], 1500 / Math.hypot(...wd)) : 1500 / Math.hypot(...wd);   // desk is 10 mm below the mat
-      pts.push(tableToBoard(cal.centre.map((c, i) => c + s * wd[i])));
-    }
-    const seg = [];
-    for (let i = 0; i < 4; i++) seg.push(...C, ...pts[i], ...pts[i], ...pts[(i + 1) % 4]);
-    const frustum = new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(seg, 3)),
-      new THREE.LineBasicMaterial({ color: 0x0e8a77, transparent: true, opacity: 0.55 }));
-    frustum.name = 'camera-frustum';
-    oak.add(frustum);
-    scene.add(oak);
-  }
-  placeMatAndCamera();
+  let last = performance.now(), frameId = null;
+  const view = createArmScene($('sim-canvas'), document.querySelectorAll('[data-sim-view]'), 'simView');
+  const { scene, arm } = view;
 
   // ---------------- collision shape overlay ----------------
-  const rotation = R => new THREE.Matrix4().set(R[0], R[1], R[2], 0, R[3], R[4], R[5], 0, R[6], R[7], R[8], 0, 0, 0, 0, 1);
   const shapeGroup = new THREE.Group(); scene.add(shapeGroup);
   const shapeMeshes = new Map();
   const wireOk = new THREE.LineBasicMaterial({ color: 0x0e8a77, transparent: true, opacity: 0.7 });
@@ -102,28 +55,12 @@ export function start(ctx) {
     for (const [n, m] of shapeMeshes) if (!used.has(n)) m.visible = false;
   }
 
-  // ---------------- cubes from the simulation ----------------
-  const cubeMeshes = new Map();
-  function syncCubeMeshes(cubes) {
-    for (const [id, m] of cubeMeshes) if (!cubes.some(c => c.id === id)) { scene.remove(m); cubeMeshes.delete(id); }
-    for (const c of cubes) {
-      let m = cubeMeshes.get(c.id);
-      if (!m) { m = buildCube(c.colour); cubeMeshes.set(c.id, m); scene.add(m); }
-      m.position.set(...c.p);
-      if (c.R) m.setRotationFromMatrix(rotation(c.R));
-      else m.rotation.set(0, 0, c.yaw * Math.PI / 180);
-    }
-  }
-
   // ---------------- path: gripper trace and the demo's positions ----------------
-  const line = color => { const l = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color })); l.frustumCulled = false; scene.add(l); return l; };
-  const traceLine = line(0x2f6fd6);
-  const demoLine = line(0xff7a1a);
-  const demoDots = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ color: 0xff7a1a, size: 0.6 }));
-  demoDots.frustumCulled = false; scene.add(demoDots);
+  const traceLine = view.line(0x2f6fd6);
+  const demoLine = view.line(0xff7a1a);
+  const demoDots = view.dots(0xff7a1a, 0.6);
   const trace = [];                      // [time, x, y, z]
   let demoKey = '';
-  const setPoints = (obj, pts) => { obj.geometry.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3)); obj.geometry.computeBoundingSphere(); };
   function showDemo(positions) {
     const key = JSON.stringify(positions.map(p => p.counts));
     if (key === demoKey) return;
@@ -133,40 +70,11 @@ export function start(ctx) {
       const c = [0, 1, 2, 3, 4, 5].map(i => p.counts[i] ?? p.counts[String(i)]);
       if (c.every(v => typeof v === 'number')) pts.push(...fk(anglesFromCounts(c)).grasp);
     }
-    setPoints(demoLine, pts); setPoints(demoDots, pts);
-    needsRender = true;
+    view.setPoints(demoLine, pts); view.setPoints(demoDots, pts);
   }
-  const showPath = () => { traceLine.visible = demoLine.visible = demoDots.visible = $('sim-show-path').checked; needsRender = true; };
+  const showPath = () => { traceLine.visible = demoLine.visible = demoDots.visible = $('sim-show-path').checked; view.invalidate(); };
   $('sim-show-path').onchange = showPath;
   showPath();
-
-  // ---------------- views ----------------
-  const VIEWS = {
-    orbit: () => { camera.fov = 36; camera.position.set(-30, 50, 30); controls.target.set(0, 11, 7); },
-    top: () => { camera.fov = 36; camera.position.set(0, 15.5, 95); controls.target.set(0, 15.5, 0); },
-    side: () => { camera.fov = 36; camera.position.set(75, 12, 14); controls.target.set(0, 12, 12); },
-  };
-  let oakView = false;
-  function applyOakView() {
-    const r = canvas.getBoundingClientRect();
-    applyPinhole(camera, CAMERA.calib, r.width, r.height);
-    controls.target.set(...camPose().target);
-  }
-  function leaveOakView() {
-    if (!oakView) return;
-    oakView = false; controls.enabled = true;
-    camera.fov = 36; camera.updateProjectionMatrix();
-    document.querySelectorAll('[data-sim-view]').forEach(x => x.classList.toggle('on', x.dataset.simView === 'orbit'));
-  }
-  document.querySelectorAll('[data-sim-view]').forEach(b => b.onclick = () => {
-    document.querySelectorAll('[data-sim-view]').forEach(x => x.classList.toggle('on', x === b));
-    if (b.dataset.simView === 'oak') { oakView = true; controls.enabled = false; applyOakView(); }
-    else { leaveOakView(); VIEWS[b.dataset.simView](); camera.updateProjectionMatrix(); controls.update(); }
-    needsRender = true;
-  });
-  canvas.addEventListener('pointerdown', () => { if (oakView) { leaveOakView(); controls.update(); } }, true);
-  const resize = () => { view.resize(); if (oakView) applyOakView(); needsRender = true; };
-  new ResizeObserver(resize).observe(canvas.parentElement);
 
   // ---------------- simulation from the API ----------------
   let world = null, open = false, timer = null, flight = false, lastSeq = 0;
@@ -195,9 +103,8 @@ export function start(ctx) {
       const last = trace[trace.length - 1];
       if (!last || Math.hypot(last[1] - world.grasp[0], last[2] - world.grasp[1], last[3] - world.grasp[2]) > 0.05) trace.push([now, ...world.grasp]);
       while (trace.length && trace[0][0] < now - TRACE_SECONDS) trace.shift();
-      setPoints(traceLine, trace.flatMap(t => t.slice(1)));
+      view.setPoints(traceLine, trace.flatMap(t => t.slice(1)));
       updatePanel();
-      needsRender = true;
     } catch (e) {
       ctx.onStatus('Unavailable', false);
       $('sim-readout').textContent = `Simulation unavailable: ${e.message}`;
@@ -228,21 +135,16 @@ export function start(ctx) {
 
   // ---------------- camera & vision ----------------
   const camTab = initCameraTab({
-    scene, initial: CAMERA.calib, hideForCamera, toast: text => ctx.notice(text, true),
+    scene, initial: cameraCalibration(), hideForCamera: view.hideForCamera, toast: text => ctx.notice(text, true),
     log: (text, kind) => log(text, kind === 'ok' ? 'ok' : ''),
     linkBase: () => '',
     visible: () => open && $('sim-camera').open,
-    onApply: cal => {
-      CAMERA.calib = cal;
-      try { localStorage.setItem(CAM_KEY, JSON.stringify({ R: cal.R, t: cal.t, f: cal.f, cx: cal.cx, cy: cal.cy, centre: cal.centre, rms: cal.rms, H: cal.H })); } catch { /* not saved */ }
-      placeMatAndCamera(); if (oakView) applyOakView(); needsRender = true;
-    },
+    onApply: cal => { saveCameraCalibration(cal); view.placeMatAndCamera(); },
   });
   $('sim-camera').addEventListener('toggle', () => { if ($('sim-camera').open) { camTab.activate(); camTab.update(); } else camTab.stopVideo('section closed'); });
 
   // ---------------- loop ----------------
-  controls.addEventListener('change', () => { needsRender = true; });
-  $('sim-show-shapes').onchange = () => { needsRender = true; };
+  $('sim-show-shapes').onchange = view.invalidate;
 
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
@@ -253,19 +155,15 @@ export function start(ctx) {
       const g = gap + (world.gap - gap) * Math.min(1, dt * 14);
       if (Math.abs(g - gap) > 1e-4) moved = true;
       gap = g;
-      if (moved) needsRender = true;
+      if (moved) view.invalidate();
     }
-    if (!oakView && controls.update()) needsRender = true;
-    if (needsRender && world) {
+    const drawn = world && view.draw(() => {
       arm.setPose(anglesFromCounts(pose), gap);
-      syncCubeMeshes(world.cubes);
+      view.syncCubes(world.cubes);
       // resting on the base is expected, like pressing: amber, not red
       updateShapes(world.shapes, world.contacts.map(k => ({ ...k, pressing: k.pressing || world.resting })), $('sim-show-shapes').checked);
-      if (backdrop) backdrop.visible = camera.position.y > backdrop.position.y + 2;
-      if (oakView) hideForCamera(view.render); else view.render();
-      camTab.markDirty(); camTab.render();
-      needsRender = false;
-    }
+    });
+    if (drawn) { camTab.markDirty(); camTab.render(); }
     frameId = open ? requestAnimationFrame(frame) : null;
   }
 
@@ -275,7 +173,7 @@ export function start(ctx) {
     if (open) {
       poll();
       timer = setInterval(poll, 100);
-      resize();
+      view.resize();
       if (frameId === null) { last = performance.now(); frameId = requestAnimationFrame(frame); }
     } else camTab.stopVideo('section closed');
   }

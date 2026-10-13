@@ -364,9 +364,42 @@ class SimulationAPITests(unittest.TestCase):
 
     def test_a_controller_without_simulation_has_no_simulation_api(self):
         _, port = self.serve(app.PreviewDriver())
-        for path in ('/api/sim/world', '/api/sim/model'):
+        for path in ('/api/sim/world', '/api/sim/model', '/api/sim/planning'):
             with self.subTest(path=path):
                 self.assertEqual(self.request(port, 'GET', path)[0], 404)
+        park = [app.PARK[c] for c in range(6)]
+        self.assertEqual(self.request(port, 'POST', '/api/sim/plan', {'task':'grab red', 'start':park})[0], 404)
+
+    def test_mock_plans_and_rehearses_without_moving_the_arm(self):
+        session, port = self.serve(SimulatedArm(app.PreviewDriver(), blocking=True, rest=app.PARK))
+        status, defaults = self.request(port, 'GET', '/api/sim/planning')
+        self.assertEqual(status, 200)
+        self.assertEqual(set(defaults), {'parameters', 'scene', 'rules'})
+        world = self.request(port, 'GET', '/api/sim/world')[1]
+        park = [app.PARK[c] for c in range(6)]
+        status, plan = self.request(port, 'POST', '/api/sim/plan', {
+            'task':'grab red', 'start':park, 'home':[app.HOME[c] for c in range(6)],
+            'scene':[{'colour':'red', 'x':3, 'y':10}], 'parameters':{'motion':{'mode':'coordinated'}}})
+        self.assertEqual(status, 200, plan)
+        self.assertTrue(plan['verdict']['ok'], plan['verdict'])
+        self.assertEqual(plan['parameters']['motion']['mode'], 'coordinated')
+        self.assertEqual(plan['frames'][0]['counts'], park)
+        self.assertEqual(self.request(port, 'GET', '/api/sim/world')[1]['counts'], world['counts'])
+        self.assertTrue(all(command is None for command in session.state()['commands'].values()))
+        self.assertIn('/api/sim/plan', self.request(port, 'GET', '/openapi.json')[1]['paths'])
+        for data, reason in (({'task':'dance', 'start':park}, 'say'), ({'task':'grab red', 'start':park[:5]}, 'start'),
+                             ({'task':'grab red', 'start':[float(c) for c in park]}, 'start'),
+                             ({'task':'grab red', 'start':park, 'speed':5}, 'speed'),
+                             ({'task':'grab red', 'start':park, 'parameters':{'motion':{'speed':0}}}, 'motion.speed')):
+            with self.subTest(data=data):
+                status, refused = self.request(port, 'POST', '/api/sim/plan', data)
+                self.assertEqual(status, 400)
+                self.assertIn(reason, refused['error'])
+        connection = http.client.HTTPConnection('127.0.0.1', port, timeout=5)
+        connection.request('POST', '/api/sim/plan', json.dumps({'task':'grab red', 'start':park}),
+                           {'Origin':'http://evil.example', 'Content-Type':'application/json'})
+        self.assertEqual(connection.getresponse().status, 403)
+        connection.close()
 
     def test_following_mock_forwards_to_the_real_controller_and_simulates_its_arm(self):
         real, real_port = self.serve(app.PreviewDriver())
@@ -404,8 +437,13 @@ class SimulationAPITests(unittest.TestCase):
         self.assertEqual((status, content_type), (200, 'text/javascript; charset=utf-8'))
         self.assertIn(b'/api/sim/world', body)
         self.assertEqual(self.request(port, 'GET', '/sim_arm_view/ref/camera-2026-10-12.jpg')[1][0], 'image/jpeg')
+        self.assertIn('mat', self.request(port, 'GET', '/sim_arm_view/view.json')[1])
+        status, (content_type, body) = self.request(port, 'GET', '/trajectory_planning/trajectory_planning.js')
+        self.assertEqual((status, content_type), (200, 'text/javascript; charset=utf-8'))
+        self.assertIn(b'/api/sim/plan', body)
         for path in ('/sim_arm_view/', '/sim_arm_view/model', '/sim_arm_view/%2e%2e/manual_control.js', '/sim_arm_view/..%2f..%2fpyproject.toml',
-                     '/sim_arm_view/vendor/../../manual_control.html'):
+                     '/sim_arm_view/vendor/../../manual_control.html', '/trajectory_planning/../sim_arm_view/scene.js',
+                     '/trajectory_planning/%2e%2e/manual_control.js'):
             with self.subTest(path=path):
                 self.assertEqual(self.request(port, 'GET', path)[0], 404)
         self.assertEqual(self.request(port, 'POST', '/sim_arm_view/sim_arm_view.js', {})[0], 405)

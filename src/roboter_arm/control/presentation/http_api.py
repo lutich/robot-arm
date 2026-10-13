@@ -24,9 +24,11 @@ from roboter_arm.control.infrastructure.drivers import PreviewDriver, HardwareDr
 from roboter_arm.control.infrastructure.follower import CHUNK, Follower
 from roboter_arm.control.infrastructure.pose_store import PoseStore
 from roboter_arm.control.infrastructure.simulated_arm import SimulatedArm
+from roboter_arm.control.infrastructure.trajectory_planner import TrajectoryPlanner
 from roboter_arm.control.presentation import api_models as body
 from roboter_arm.control.presentation.camera_api import register as register_camera
 from roboter_arm.control.presentation.distance_api import register as register_distance
+from roboter_arm.control.presentation.planning_api import register as register_planning
 from roboter_arm.shared.joints import JOINTS
 from roboter_arm.shared.paths import ROOT
 
@@ -48,7 +50,8 @@ TAGS = [{'name':'State', 'description':'Read-only status; polling it never prepa
          'the first move needs first_clear: true. Not used by the page.'},
         {'name':'Camera', 'description':'Read camera frames and submit supported settings; no servo commands.'},
         {'name':'Distance', 'description':'Fresh ultrasonic distance batches and sensor status; no servo commands.'},
-        {'name':'Simulation', 'description':'Only on the mock controller (Preview, or --follow): its arm simulation.'}]
+        {'name':'Simulation', 'description':'Only on the mock controller (Preview, or --follow): its arm simulation, '
+         'and trajectory planning that plans and rehearses tasks in a copy of a cube scene without moving the arm.'}]
 # path: (Session method, request body, tag, summary). Stop is separate; see create_app.
 ACTIONS = {'power_on':('power_on', body.PowerOn, 'Power', 'Enable PARK, then move to HOME; needs fresh physical PARK/readiness'),
            'power_off':('power_off', body.Empty, 'Power', 'Return known commands to PARK, then disable all outputs'),
@@ -177,18 +180,21 @@ class Forward:
             connection.close()
 
 
-# 3D arm view (web/sim_arm_view), served read-only under /sim_arm_view/. It draws what the mock
-# controller's simulation reports (/api/sim/*); a controller without one has no such routes.
-VIEW_ROOT = ROOT / 'web' / 'sim_arm_view'
+# The 3D sections, served read-only: the 3D arm viewer (web/sim_arm_view) and trajectory planning
+# (web/trajectory_planning). They draw what the mock controller's simulation reports (/api/sim/*);
+# a controller without one has no such routes.
+VIEW_ROOTS = {name:ROOT / 'web' / name for name in ('sim_arm_view', 'trajectory_planning')}
 VIEW_TYPES = {'.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8',
              '.json':'application/json', '.png':'image/png', '.jpg':'image/jpeg', '.txt':'text/plain; charset=utf-8'}
 
 
-def view_file(path):
-    file = (VIEW_ROOT / path).resolve()
-    if VIEW_ROOT.resolve() not in file.parents or not file.is_file() or file.suffix not in VIEW_TYPES:
-        raise HTTPException(404)
-    return Response(file.read_bytes(), media_type=VIEW_TYPES[file.suffix])
+def view_files(root):
+    def view_file(path):
+        file = (root / path).resolve()
+        if root.resolve() not in file.parents or not file.is_file() or file.suffix not in VIEW_TYPES:
+            raise HTTPException(404)
+        return Response(file.read_bytes(), media_type=VIEW_TYPES[file.suffix])
+    return view_file
 
 
 def asset(name, media_type):
@@ -223,7 +229,8 @@ def create_app(session, camera=None, *, distance=None, follower=None):
     for path, (name, media_type) in ASSETS.items():
         app.add_api_route(path, asset(name, media_type), methods=['GET'], include_in_schema=False)
 
-    app.add_api_route('/sim_arm_view/{path:path}', view_file, methods=['GET'], include_in_schema=False)
+    for name, root in VIEW_ROOTS.items():
+        app.add_api_route(f'/{name}/{{path:path}}', view_files(root), methods=['GET'], include_in_schema=False)
 
     @app.get('/api/state', tags=['State'], summary='Read-only session state; never prepares hardware')
     def state(request: Request):
@@ -237,6 +244,8 @@ def create_app(session, camera=None, *, distance=None, follower=None):
         @app.get('/api/sim/world', tags=['Simulation'], summary='Simulated pose, contacts and events; read only')
         def sim_world(request: Request):
             return request.app.state.session.driver.snapshot()
+
+        register_planning(app, TrajectoryPlanner(session.driver))
 
     @app.post('/api/stop', tags=['Power'], responses=RESPONSES,
               summary='Cancel immediately and disable outputs directly; no recovery movement')

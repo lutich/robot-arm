@@ -1,0 +1,5 @@
+{
+  "base": {"w": 9.0, "beamD": 4.0, "h": 2.5, "plateT": 0.2, "offsetY": 2.2, "beamY": 2.12, "webY": 0.13, "webT": 0.2},
+  "mat": {"w": 28, "d": 36, "sToEdge": -2.5},
+  "camera": {"posCamMm": [480.8, -8.3, 371.7], "fPx": 952, "w": 1280, "h": 720}
+}

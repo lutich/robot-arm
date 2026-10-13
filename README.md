@@ -53,7 +53,7 @@ Open **http://127.0.0.1:8765/**. Read-only API state is at
 **http://127.0.0.1:8765/api/state**. Preview simulates commands and writes
 synthetic records; it is not a physics simulator.
 
-### Arm simulation
+### 3D arm viewer
 
 Section 03 of the page, below Joint control, draws the arm in 3D (`web/sim_arm_view`).
 It is a view only: everything it shows comes from the API of the *mock controller*, which
@@ -84,7 +84,27 @@ The model can hold cubes (grasp, carry, release onto a stack, no physics), but
 nothing places them yet. The section also holds the camera tools: simulated OAK
 view, calibration from the mat markers and cube recognition. They read
 `/api/camera/*`, which the mock forwards when following, and fall back to a
-saved frame without a camera.
+saved frame without a camera. The viewer's mat, camera and base fixture come from
+`web/sim_arm_view/view.json`.
+
+### Trajectory planning
+
+Section 04 plans a task and rehearses it, also on the mock controller only. Type
+`blue on orange`, `green to 5 15` (board cm), `grab red`, add `home` to end at HOME,
+choose the start pose (PARK, HOME or the current commands) and press **Plan & rehearse**.
+The mock plans top-down pick-and-place waypoints, splits them into the steps the
+controller executes, rehearses them in its own copy of the cube scene and answers with a
+verdict, events, contacts and a timeline that the section plays back in its own 3D view.
+Nothing is sent to the arm, and the arm simulation of section 03 is not touched.
+
+The planner lives in `src/roboter_arm/sim/domain/planning`. Its parameters (single-servo or
+coordinated steps, speed, hover heights, gripper hold count, acceptance tolerances) and the
+default cube scene are in `src/roboter_arm/sim/domain/planning/planning.json`, documented in
+`parameters.py` there. The mock reads the file on every request, so edits apply without a
+restart. To try values without editing it, change them in the section's Parameters and Scene
+panels; they go with your next plans and stay in your browser. **Copy as planning.json**
+gives the text to paste into the file. Contacts in the rehearsal are reported, not refused,
+unless `acceptance.fail_on_contact` is on, because the servo calibration is not measured.
 
 ## Connect and deploy
 

@@ -334,6 +334,32 @@ are checked on load. Preview records cannot be loaded into hardware mode.
 Saved counts have no position feedback and do not establish calibrated travel
 or collision clearance. Min/Max edits apply only to this running session.
 
+## Simulation (mock controller only)
+
+The mock controller (`manual_control.py` without `--hardware`, in Preview or with
+`--follow`) runs the arm model of `src/roboter_arm/sim`. A `--hardware` controller has none
+of these routes and answers 404. With `--follow`, they stay on the mock; every other
+`/api/*` request goes on to the real controller.
+
+| Route | Result |
+| --- | --- |
+| `GET /api/sim/model` | Dimensions and servo calibration (`arm_model.json`). |
+| `GET /api/sim/world` | Simulated counts, cubes, contacts, collision shapes and recent events; read only. |
+| `GET /api/sim/planning` | Trajectory planning defaults from `planning.json`: `parameters`, `scene` and the `rules` that bound each parameter. 500 if the file is invalid. |
+| `POST /api/sim/plan` | Plan a task and rehearse it in a copy of the cube scene. Sends no servo command and does not change the session or `/api/sim/world`. |
+
+`POST /api/sim/plan` takes `task` (text, 1–200 characters), `start` (six integer counts),
+optionally `home` (six counts; needed when the task says `home`), `scene` (cubes with
+`colour`, `x`, `y`, optional `level` and `yaw`; default: the scene in `planning.json`) and
+`parameters` (groups of values that override `planning.json` for this request). It answers
+with `description`, the effective `parameters`, the initial `scene`, `expect`, `waypoints`,
+`steps` (each with `label`, `phase`, `counts` and `seconds`), total `seconds`, `frames` (time,
+step, counts, jaw gap, and the cubes whenever one moved), `events`, `contacts` (pair, kind
+`pressing`, `resting` or `contact`, first time, deepest millimetres) and `verdict` (`ok`,
+`text`, `offset_mm`). An unplannable task, counts outside the servo bounds, an invalid scene or
+an out-of-range parameter answers 400 with the reason. The usual POST guards apply
+(same-origin `Origin`, JSON, at most 8192 bytes).
+
 ## Using the API
 
 Open the frontend through the same URL as the API, for example

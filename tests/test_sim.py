@@ -1,4 +1,5 @@
 """Arm simulation: kinematics, collision, cube world, and the driver wrapper behind the session."""
+import math
 from pathlib import Path
 import sys
 import tempfile
@@ -124,6 +125,17 @@ class WorldTests(unittest.TestCase):
         self.assertEqual(blue.json()['level'], 1)
         self.assertAlmostEqual(blue.p[0], 6, delta=0.3)
         self.assertEqual([e['kind'] for e in world.events if e['kind'] in ('grasp', 'release')], ['grasp', 'release'])
+
+    def test_finely_closing_jaws_centre_a_cube_slightly_off_the_middle(self):
+        # The MotionRunner closes the jaws a count or two per write. A cube 0,8 mm off the middle
+        # along the jaw axis (count rounding alone does that) is still between the pads.
+        grip = top_down(0, 15, CUBE / 2, 490)
+        yaw = math.radians(tool_yaw_and_tilt(fk(angles_from_counts(grip)).hand)[0])
+        world = World()
+        world.set_scene([('blue', 0.08 * math.cos(yaw), 15 + 0.08 * math.sin(yaw), 0, math.degrees(yaw))])
+        start = drive(world, HOME_COUNTS, [top_down(0, 15, CUBE / 2 + 5, 490), grip])
+        drive(world, start, [grip[:5] + [600]], steps=110)
+        self.assertEqual(world.holding.id, 'blue')
 
     def test_lifting_a_cube_drops_the_one_on_top(self):
         world = World()

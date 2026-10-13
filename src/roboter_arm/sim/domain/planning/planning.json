@@ -1,0 +1,31 @@
+{
+  "motion": {
+    "mode": "single_servo",
+    "speed": 20,
+    "step_counts": 8
+  },
+  "approach": {
+    "hover": 5.0,
+    "hover_stacked": 2.0,
+    "hover_fallbacks": [3.5, 2.0, 1.5, 1.0],
+    "descent_step": 1.0,
+    "release_gap": 0.2
+  },
+  "gripper": {
+    "hold": 590
+  },
+  "acceptance": {
+    "place_xy": 0.9,
+    "place_z": 0.3,
+    "fail_on_contact": false
+  },
+  "rehearsal": {
+    "frame_seconds": 0.0333
+  },
+  "scene": [
+    {"colour": "orange", "x": 10.8, "y": 14.0, "level": 0, "yaw": 3},
+    {"colour": "blue", "x": -8.0, "y": 12.0, "level": 0, "yaw": 0},
+    {"colour": "red", "x": 3.0, "y": 10.0, "level": 0, "yaw": 0},
+    {"colour": "green", "x": -4.0, "y": 17.0, "level": 0, "yaw": 10}
+  ]
+}

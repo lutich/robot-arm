@@ -73,7 +73,7 @@
 </div>
 </details>
 <details class="accordion" id="sim-section">
-<summary><span class="number">03</span><span class="section-title">Arm simulation</span><span class="state" id="sim-state"><span class="dot"></span><span id="sim-label">Closed</span></span><span class="chevron" aria-hidden="true"></span></summary>
+<summary><span class="number">03</span><span class="section-title">3D arm viewer</span><span class="state" id="sim-state"><span class="dot"></span><span id="sim-label">Closed</span></span><span class="chevron" aria-hidden="true"></span></summary>
 <div class="sim-layout">
 <div class="sim-view">
 <div class="sim-stage"><canvas id="sim-canvas"></canvas><p class="sim-contacts" id="sim-contacts" role="status" hidden></p></div>
@@ -128,8 +128,53 @@
 </div>
 </details>
 </details>
+<details class="accordion" id="plan-section">
+<summary><span class="number">04</span><span class="section-title">Trajectory planning</span><span class="state" id="plan-state"><span class="dot"></span><span id="plan-label">Closed</span></span><span class="chevron" aria-hidden="true"></span></summary>
+<div class="sim-layout">
+<div class="sim-view">
+<div class="sim-stage"><canvas id="plan-canvas"></canvas><p class="sim-contacts" id="plan-verdict" role="status" hidden></p></div>
+<div class="sim-toolbar">
+<div class="sim-views" role="group" aria-label="View"><button class="secondary on" data-plan-view="orbit">Orbit</button><button class="secondary" data-plan-view="top">Top</button><button class="secondary" data-plan-view="side">Side</button><button class="secondary" data-plan-view="oak">OAK camera</button></div>
+<label class="sim-check"><input type="checkbox" id="plan-show-path" checked> Path</label>
+</div>
+<div class="plan-playback">
+<button class="secondary" id="plan-play" disabled>Play</button><button class="secondary" id="plan-replay" disabled>Replay</button>
+<input type="range" id="plan-scrub" min="0" max="1000" value="0" disabled aria-label="Rehearsal time">
+<label class="sim-check">Speed <select id="plan-speed"><option value="1">1×</option><option value="2">2×</option><option value="4" selected>4×</option><option value="8">8×</option></select></label>
+</div>
+<p class="camera-caption" id="plan-step">Loading trajectory planning…</p>
+<p class="camera-caption">The mock controller plans the task and rehearses it in a copy of the scene below; nothing is sent to the arm. Path: orange is the gripper's planned path, dots its waypoints.</p>
+</div>
+<div class="sim-controls">
+<form class="plan-form" id="plan-form">
+<label for="plan-text">Task</label>
+<input id="plan-text" maxlength="200" placeholder="blue on orange · green to 5 15 · grab red · … home" autocomplete="off">
+<label for="plan-start">Start pose</label>
+<select id="plan-start"><option value="park">PARK</option><option value="home">HOME</option><option value="current">Current commands</option></select>
+<button class="primary" id="plan-run" type="submit">Plan &amp; rehearse</button>
+</form>
+<p class="camera-profile" id="plan-summary"></p>
+<div class="sim-group">
+<h3>Events</h3>
+<ol class="sim-log" id="plan-log"></ol>
+</div>
+<details class="sim-sub"><summary>Steps</summary><div class="plan-table-wrap"><table class="plan-table" id="plan-steps"></table></div></details>
+</div>
+</div>
+<details class="sim-camera" id="plan-scene-panel">
+<summary>Scene <small>cubes at the start · board frame, cm · level 0 lies on the board</small></summary>
+<div class="plan-table-wrap"><table class="plan-table" id="plan-scene"></table></div>
+<div class="camera-actions"><button class="secondary" id="plan-scene-add" type="button">Add cube</button><button class="secondary" id="plan-scene-reset" type="button">Default scene</button></div>
+</details>
+<details class="sim-camera" id="plan-params-panel">
+<summary>Parameters <small>defaults from planning.json · changes here go with your next plans only</small></summary>
+<div class="plan-fields" id="plan-params"></div>
+<div class="camera-actions"><button class="secondary" id="plan-params-reset" type="button">Defaults</button><button class="secondary" id="plan-params-copy" type="button">Copy as planning.json</button></div>
+<textarea class="plan-json" id="plan-params-json" readonly hidden aria-label="Parameters as planning.json"></textarea>
+</details>
+</details>
 <details class="accordion" id="camera-section" open>
-<summary><span class="number">04</span><span class="section-title">Camera</span><span class="state" id="camera-state"><span class="dot"></span><span id="camera-label">Connecting</span></span><span class="chevron" aria-hidden="true"></span></summary>
+<summary><span class="number">05</span><span class="section-title">Camera</span><span class="state" id="camera-state"><span class="dot"></span><span id="camera-label">Connecting</span></span><span class="chevron" aria-hidden="true"></span></summary>
 <div class="camera-layout">
 <div class="camera-view">
 <div class="camera-selector"><label for="camera-display">Display</label><select id="camera-display" disabled><option value="rgb">RGB</option><option id="camera-depth-option" value="depth" disabled>Depth preview</option></select></div>
@@ -153,7 +198,7 @@
 </div>
 </details>
 <details class="accordion" id="distance-section" open>
-<summary><span class="number">05</span><span class="section-title">Distance</span><span class="state" id="distance-state"><span class="dot"></span><span id="distance-label">Connecting</span></span><span class="chevron" aria-hidden="true"></span></summary>
+<summary><span class="number">06</span><span class="section-title">Distance</span><span class="state" id="distance-state"><span class="dot"></span><span id="distance-label">Connecting</span></span><span class="chevron" aria-hidden="true"></span></summary>
 <div class="distance-layout">
 <div class="distance-controls">
 <form class="distance-form" id="distance-form"><label for="distance-samples">Samples<input id="distance-samples" type="number" min="1" max="20" step="1" value="5" required disabled></label><button class="primary" id="distance-measure" type="submit" disabled>Measure</button></form>

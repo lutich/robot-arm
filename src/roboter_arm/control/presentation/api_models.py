@@ -91,6 +91,23 @@ class Filename(Body):
     filename: str
 
 
+class SceneCube(Body):
+    colour: str
+    x: float
+    y: float
+    level: int = 0
+    yaw: float = 0
+
+
+class Plan(Body):
+    # Shapes only; the planning domain checks counts, colours, the board and parameter ranges.
+    task: str = Field(min_length=1, max_length=200)
+    start: list[int] = Field(min_length=6, max_length=6)
+    home: list[int] | None = Field(default=None, min_length=6, max_length=6)
+    scene: list[SceneCube] | None = None
+    parameters: dict[str, dict[str, Any]] | None = None
+
+
 class DistanceDefaults(Body):
     default_samples: int
     max_samples: int

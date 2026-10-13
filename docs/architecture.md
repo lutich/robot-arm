@@ -13,10 +13,12 @@ implementation.
 | `control` | Pi; preview also on the laptop | Attended session, motion, demos, HTTP API, drivers, single-joint checks |
 | `calibration` | Pi or laptop | Calibration evidence rules and append-only records |
 | `provisioning` | Laptop | SSH and host keys, deployment manifest, inspection, Wi-Fi, app service |
+| `sim` | Mock controller (Preview, `--follow`) | Arm model, kinematics, collision, cube world; `domain/planning`: task text, top-down pick-and-place waypoints, controller steps and rehearsal |
 | `shared` | Both | Joint catalog (`JOINTS`) and repository root (`ROOT`) |
 
-`deploy.json` ships `shared`, `control` and `calibration`. `provisioning` stays
-on the laptop.
+`deploy.json` ships `shared`, `control`, `calibration` and `sim`. `provisioning`
+stays on the laptop. `sim` has only a domain layer; its data files
+(`arm_model.json`, `planning/planning.json`) sit next to the modules that document them.
 
 ## Layers and dependency rules
 
@@ -36,7 +38,10 @@ Each context has only the layers it needs:
 Dependencies point inward: presentation → infrastructure → application →
 domain, and any layer may use `shared`. Contexts meet only where one context's
 infrastructure applies another context's domain rules: control's `load_limits`
-validates records with calibration's `validate`. `tests/test_architecture.py`
+validates records with calibration's `validate`; control's `SimulatedArm` runs
+sim's world behind the mock's servo driver, and its `TrajectoryPlanner` plans and
+rehearses with sim's `domain/planning` for `/api/sim/plan` (reading `planning.json`
+on each request), without touching the session or the driver. `tests/test_architecture.py`
 enforces these rules and that no module imports a hardware library at import
 time.
 

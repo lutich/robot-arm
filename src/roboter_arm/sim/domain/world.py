@@ -47,6 +47,10 @@ class World:
     cubes: list = field(default_factory=list)
     holding: Holding | None = None
     gap: float = 4.5
+    # Jaw gap when the jaws last started closing. A cube that sat between the pads then is pushed to
+    # the middle as they close (threejs-sim does this with physics), so `between` tests against it,
+    # not against the previous step's gap: that one is only a sampling step wider than the cube.
+    opened: float = 4.5
     contacts: list = field(default_factory=list)
     events: list = field(default_factory=list)
     seq: int = 0
@@ -128,7 +132,7 @@ class World:
         if self.holding:
             c = self.cube(self.holding.id)
             if cmd_gap > self.holding.width + 0.02:
-                self.holding, self.gap = None, cmd_gap
+                self.holding, self.gap, self.opened = None, cmd_gap, cmd_gap
                 c.held = False
                 x = (c.R[0], c.R[3], c.R[6])
                 c.yaw, c.R = math.atan2(x[1], x[0]) * DEG, None
@@ -141,6 +145,8 @@ class World:
         else:
             grasped = None
             v_pad = pad_depth_for_theta(theta_for_gap(max(cmd_gap, 0)))
+            if cmd_gap > self.gap + 1e-9:         # the jaws open
+                self.opened = cmd_gap
             if cmd_gap < self.gap + 1e-9:         # the jaws close (or hold still)
                 for c in self.cubes:
                     q = local(c.p)                 # u = jaw axis, w = depth, v = down the tool
@@ -148,7 +154,7 @@ class World:
                     width = CUBE if abs(e) < 20 else CUBE * (abs(math.cos(e * math.pi / 180)) + abs(math.sin(e * math.pi / 180)))
                     if cmd_gap >= width:
                         continue
-                    between = abs(q[0]) + width / 2 <= self.gap / 2 + 0.05
+                    between = abs(q[0]) + width / 2 <= self.opened / 2 + 0.05
                     v_overlap = abs(q[2] - v_pad) < CUBE / 2 + GRIPPER['pad']['h'] / 2 - 0.2
                     w_overlap = abs(q[1]) < CUBE / 2 + GRIPPER['pad']['w'] / 2 - 0.2
                     if not (between and v_overlap and w_overlap and tilt < 30):
