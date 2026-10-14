@@ -622,6 +622,15 @@ class HTTPTests(unittest.TestCase):
         self.assertIn(b'EMERGENCY STOP', page)
         for path in ('/manual_control.css', '/manual_control.js'):
             self.assertEqual(self.request('GET', path)[0], 200)
+        self.assertIn(b'<canvas id="scene"', page)
+        self.assertIn(b'/simulation.js', page)
+        status, simulation = self.request('GET', '/simulation')
+        self.assertEqual(status, 200)
+        self.assertIn(b'<canvas id="scene"', simulation)
+        self.assertIn(b'data-simulation="standalone"', simulation)
+        self.assertNotIn(b'id="power"', simulation)
+        for path in ('/simulation.css', '/simulation.js'):
+            self.assertEqual(self.request('GET', path)[0], 200)
         for path in ('/park-illustration-v2.png', '/home-illustration.png'):
             status, illustration = self.request('GET', path)
             self.assertEqual(status, 200)

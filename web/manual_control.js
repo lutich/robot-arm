@@ -206,6 +206,7 @@ async function poll() {
       const previous = state;
       state = await response.json();
       connected = true;
+      window.simulation?.update(state);
       $('connection').classList.remove('error');
       $('connection').textContent = state.mode === 'preview' ? 'Preview · no hardware access' : 'Local connection';
       if (!previous) selected = state.joints.find(candidate => candidate.allowed).channel;
@@ -217,6 +218,7 @@ async function poll() {
     } catch (error) {
       connected = false;
       $('ready').checked = false;
+      window.simulation?.update(null);
       $('connection').classList.add('error');
       $('connection').textContent = 'Connection lost · support the arm and switch Eventek off.';
       render();

@@ -1,0 +1,80 @@
+{
+  "metadata": {
+    "schemaVersion": 1,
+    "units": "millimetres",
+    "coordinateFrame": "printed-mat table frame: +X away from the arm, +Y toward the arm's left",
+    "status": "observations-only",
+    "safety": "Calibration candidates only. These records are not validated poses, safe limits or measured joint feedback."
+  },
+  "observations": [
+    {
+      "id": "mat-50-200-2026-10-13",
+      "recordedDate": "2026-10-13",
+      "targetMm": {
+        "x": 50,
+        "y": 200,
+        "z": null
+      },
+      "servoCounts": {
+        "S1": 370,
+        "S2": 377,
+        "S3": 393,
+        "S4": 200,
+        "S5": 270,
+        "S6": 550
+      },
+      "controllerState": {
+        "mode": "hardware",
+        "armed": true,
+        "busy": false,
+        "outputsOff": false,
+        "error": null
+      },
+      "provenance": "User identified this controller-reported configuration as the arm pose for mat X=50 mm, Y=200 mm; counts were read from GET /api/state.",
+      "limitations": {
+        "toolPoint": "unspecified",
+        "height": "unmeasured",
+        "orientation": "unmeasured",
+        "jointFeedback": "unavailable; servo counts are commanded values"
+      },
+      "calibrationStatus": "candidate-anchor-not-validated"
+    },
+    {
+      "id": "servo-xy-80-0-2026-10-13",
+      "recordedDate": "2026-10-13",
+      "positionMm": {
+        "x": 80,
+        "y": 0
+      },
+      "servoCounts": {
+        "S1": 330,
+        "S2": 540,
+        "S3": 580,
+        "S4": 195,
+        "S5": 480,
+        "S6": 650
+      },
+      "source": "XY supplied by the user; servo commanded values read without motion from GET /api/state.",
+      "calibrationStatus": "recorded-not-validated"
+    },
+    {
+      "id": "home-servo-xy-200-0-2026-10-13",
+      "recordedDate": "2026-10-13",
+      "positionMm": {
+        "x": 200,
+        "y": 0
+      },
+      "servoCounts": {
+        "S1": 320,
+        "S2": 427,
+        "S3": 403,
+        "S4": 220,
+        "S5": 250,
+        "S6": 550
+      },
+      "pose": "HOME",
+      "source": "XY and HOME label supplied by the user; servo commanded values read without motion from GET /api/state and matched the controller's configured HOME values.",
+      "calibrationStatus": "recorded-not-validated"
+    }
+  ]
+}

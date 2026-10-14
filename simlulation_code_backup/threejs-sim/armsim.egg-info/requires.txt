@@ -1,0 +1,8 @@
+mujoco<4,>=3.2
+numpy>=1.26
+pyyaml>=6
+fastapi>=0.110
+uvicorn>=0.29
+
+[dev]
+pytest>=8

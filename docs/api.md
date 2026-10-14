@@ -15,6 +15,9 @@ definitions and immutable Demo records without controller access; `session_for` 
 
 The browser files are `web/manual_control.html`, `web/manual_control.css`
 and `web/manual_control.js`. They render backend state and submit actions.
+`web/simulation.js` and `web/simulation.css` draw the page's [3D simulation](simulation.md)
+of the commanded counts; `web/simulation.html` at `/simulation` is the same
+viewer alone. The viewer only reads state.
 The browser does not interpolate trajectories, execute a sequence itself or
 decide whether a requested movement is allowed.
 

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Robot arm · 3D viewer</title>
+<link rel="stylesheet" href="/manual_control.css">
+<link rel="stylesheet" href="/simulation.css">
+<script src="/simulation.js" defer></script>
+</head>
+<body data-simulation="standalone">
+<header><div class="header-inner"><div class="brand"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M4 28h24M21 25V15l-6-7H7M15 8l-4 9H5m0 0v5m-2 0h4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="21" cy="15" r="2.8" fill="white" stroke="currentColor" stroke-width="2.2"/><circle cx="15" cy="8" r="2.8" fill="white" stroke="currentColor" stroke-width="2.2"/></svg><span>Robot arm · 3D viewer</span></div><nav class="page-links"><a href="/">Manual control</a><a href="/docs">API docs</a></nav></div></header>
+<main>
+<section class="accordion sim-section">
+<div class="sim-layout">
+<div class="sim-stage">
+<canvas id="scene" aria-label="Three-dimensional view of the simulated arm and blocks"></canvas>
+<div class="sim-hud" id="hud">Connecting…</div>
+<div class="sim-views"><span>View</span><button class="secondary" data-view="iso">Iso</button><button class="secondary" data-view="front">Front</button><button class="secondary" data-view="side">Side</button><button class="secondary" data-view="top">Top</button></div>
+<p class="sim-hint">Drag to orbit · scroll to zoom. Axes: <b class="x">X</b> right, <b class="y">Y</b> forward, <b class="z">Z</b> up. The arm follows the commanded counts; close the gripper near a block to pick it up and open it to set the block down.</p>
+</div>
+<aside class="sim-aside">
+<p class="small-label">Blocks</p>
+<ul class="block-list" id="blocks"></ul>
+<p class="sim-status" id="sim-status" role="status" aria-live="polite"></p>
+<button class="secondary" id="reset-blocks">Reset blocks</button>
+<p class="sim-note">Link lengths and the count-to-angle mapping are an assumed visual model, not calibration. Blocks exist only in this page.</p>
+</aside>
+</div>
+<p class="connection" id="sim-connection" role="status">Connecting…</p>
+</section>
+<p class="preview-note">View only: control the arm from the manual control page or the API. This window mirrors the same session.</p>
+</main>
+</body>
+</html>

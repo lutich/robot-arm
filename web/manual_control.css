@@ -35,3 +35,6 @@ header{height:64px}.header-inner{max-width:1480px;padding:0 20px}main{max-width:
 @media(max-width:900px){.distance-layout{grid-template-columns:210px minmax(0,1fr);gap:18px;padding:14px}}
 @media(max-width:700px){.distance-layout{grid-template-columns:minmax(0,1fr);gap:16px;padding:12px}.distance-form{max-width:320px}.distance-measurement{border-top:1px solid var(--line);padding-top:14px}.distance-table th,.distance-table td{padding:8px}.distance-value{font-size:30px}}
 .distance-reading-error td:last-child{color:var(--red)}
+/* Links between the control and simulation pages. */
+.page-links{display:flex;gap:14px;margin-left:auto;margin-right:18px;font-size:12px;font-weight:650}.page-links a{color:#3c5364;text-decoration:none;padding:7px 10px;border:1px solid #d6e0e5;border-radius:8px;background:white}.page-links a:hover{background:#f0f5f3;border-color:#a6c4bb}
+@media(max-width:700px){.page-links{display:none}}

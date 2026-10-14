@@ -1,0 +1,95 @@
+diff --git a/src/roboter_arm/control/presentation/http_api.py b/src/roboter_arm/control/presentation/http_api.py
+index 2342007..42c8320 100644
+--- a/src/roboter_arm/control/presentation/http_api.py
++++ b/src/roboter_arm/control/presentation/http_api.py
+@@ -2,6 +2,8 @@
+ import argparse
+ from functools import partial
+ import ipaddress
++import os
++from pathlib import Path
+ import signal
+ import socket
+ import threading
+@@ -11,7 +13,7 @@ from urllib.parse import urlsplit
+ import anyio
+ from fastapi import FastAPI, Request
+ from fastapi.exceptions import RequestValidationError
+-from fastapi.responses import JSONResponse, Response
++from fastapi.responses import JSONResponse, RedirectResponse, Response
+ from starlette.datastructures import Headers
+ from starlette.exceptions import HTTPException
+ import uvicorn
+@@ -141,6 +143,27 @@ def action(method, model):
+     return endpoint
+ 
+ 
++# Optional three.js simulator from px-robotic-arm-sim (threejs-sim/), served read-only under /sim/
++# when ROBOT_ARM_SIM_DIR points at that folder. Same origin, so the simulator can read /api/state
++# and, after its operator explicitly enables live control, send the same actions as this page.
++SIM_TYPES = {'.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8',
++             '.css':'text/css; charset=utf-8', '.json':'application/json', '.png':'image/png',
++             '.jpg':'image/jpeg', '.svg':'image/svg+xml', '.txt':'text/plain; charset=utf-8'}
++
++
++def sim_directory():
++    path = os.environ.get('ROBOT_ARM_SIM_DIR')
++    root = Path(path).resolve() if path else None
++    return root if root and (root / 'index.html').is_file() else None
++
++
++def sim_file(root, path):
++    file = (root / (path or 'index.html')).resolve()
++    if root not in file.parents or not file.is_file() or file.suffix not in SIM_TYPES:
++        raise HTTPException(404)
++    return Response(file.read_bytes(), media_type=SIM_TYPES[file.suffix])
++
++
+ def asset(name, media_type):
+     def endpoint():
+         return Response((ROOT / 'web' / name).read_bytes(), media_type=media_type)
+@@ -171,6 +194,11 @@ def create_app(session, camera=None, *, distance=None):
+     for path, (name, media_type) in ASSETS.items():
+         app.add_api_route(path, asset(name, media_type), methods=['GET'], include_in_schema=False)
+ 
++    sim_root = sim_directory()
++    if sim_root:
++        app.add_api_route('/sim', lambda: RedirectResponse('/sim/'), methods=['GET'], include_in_schema=False)
++        app.add_api_route('/sim/{path:path}', lambda path: sim_file(sim_root, path), methods=['GET'], include_in_schema=False)
++
+     @app.get('/api/state', tags=['State'], summary='Read-only session state; never prepares hardware')
+     def state(request: Request):
+         return request.app.state.session.state()
+diff --git a/web/manual_control.css b/web/manual_control.css
+index 30fe1b6..feef8ff 100644
+--- a/web/manual_control.css
++++ b/web/manual_control.css
+@@ -35,3 +35,4 @@ header{height:64px}.header-inner{max-width:1480px;padding:0 20px}main{max-width:
+ @media(max-width:900px){.distance-layout{grid-template-columns:210px minmax(0,1fr);gap:18px;padding:14px}}
+ @media(max-width:700px){.distance-layout{grid-template-columns:minmax(0,1fr);gap:16px;padding:12px}.distance-form{max-width:320px}.distance-measurement{border-top:1px solid var(--line);padding-top:14px}.distance-table th,.distance-table td{padding:8px}.distance-value{font-size:30px}}
+ .distance-reading-error td:last-child{color:var(--red)}
++.header-actions{display:flex;align-items:center;gap:12px}.sim-link{text-decoration:none}.sim-link[hidden]{display:none}
+diff --git a/web/manual_control.html b/web/manual_control.html
+index 40b6b9c..43a5286 100644
+--- a/web/manual_control.html
++++ b/web/manual_control.html
+@@ -8,7 +8,7 @@
+ <script src="/manual_control.js" defer></script>
+ </head>
+ <body>
+-<header><div class="header-inner"><div class="brand"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M4 28h24M21 25V15l-6-7H7M15 8l-4 9H5m0 0v5m-2 0h4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="21" cy="15" r="2.8" fill="white" stroke="currentColor" stroke-width="2.2"/><circle cx="15" cy="8" r="2.8" fill="white" stroke="currentColor" stroke-width="2.2"/></svg><span>Robot arm</span></div><button class="emergency" id="emergency"><span class="stop-icon" aria-hidden="true"></span>EMERGENCY STOP</button></div></header>
++<header><div class="header-inner"><div class="brand"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M4 28h24M21 25V15l-6-7H7M15 8l-4 9H5m0 0v5m-2 0h4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="21" cy="15" r="2.8" fill="white" stroke="currentColor" stroke-width="2.2"/><circle cx="15" cy="8" r="2.8" fill="white" stroke="currentColor" stroke-width="2.2"/></svg><span>Robot arm</span></div><div class="header-actions"><a class="secondary sim-link" id="sim-link" href="/sim/" target="_blank" rel="noopener" hidden>3D simulator</a><button class="emergency" id="emergency"><span class="stop-icon" aria-hidden="true"></span>EMERGENCY STOP</button></div></div></header>
+ <main>
+ <details class="accordion" open>
+ <summary><span class="number">01</span><span class="section-title">Initialize</span><span class="state" id="init-state"><span class="dot"></span><span id="state-label">Off</span></span><span class="chevron" aria-hidden="true"></span></summary>
+diff --git a/web/manual_control.js b/web/manual_control.js
+index 388e401..3a37b1f 100644
+--- a/web/manual_control.js
++++ b/web/manual_control.js
+@@ -752,3 +752,6 @@ pollCamera();
+ setInterval(pollCamera, 1000);
+ pollDistance();
+ setInterval(pollDistance, 1000);
++
++// Show the simulator link only when the controller serves it (ROBOT_ARM_SIM_DIR).
++fetch('/sim/index.html', {method: 'GET', cache: 'no-store'}).then(r => { if (r.ok) $('sim-link').hidden = false; }).catch(() => {});

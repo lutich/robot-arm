@@ -1,0 +1,10 @@
+# Stack the yellow cube on the red one. Run against the sandbox:
+#   python -m armsim.cli --target http://127.0.0.1:8766 scripts/stack_yellow_on_red.txt
+# Against the real arm, point --target at the Pi; "power on" then asks for the PARK confirmation.
+power on
+speed 60
+reset
+blocks
+stack yellow red
+blocks
+log artifacts/logs/stack_yellow_on_red.jsonl

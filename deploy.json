@@ -58,6 +58,9 @@
   "web/manual_control.html",
   "web/manual_control.js",
   "web/park-illustration-v2.png",
+  "web/simulation.css",
+  "web/simulation.html",
+  "web/simulation.js",
   "config/reference-arm/README.md",
   "config/reference-arm/gripper-observation.json",
   "config/reference-arm/home.json",
@@ -114,5 +117,6 @@
   "docs/operations.md",
   "docs/quickstart.md",
   "docs/raspberry-pi.md",
+  "docs/simulation.md",
   "runtime/NOTICE.md"
 ]

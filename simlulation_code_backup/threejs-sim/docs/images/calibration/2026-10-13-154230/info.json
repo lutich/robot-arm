@@ -1,0 +1,31 @@
+{
+  "taken": "2026-10-13T13:42:30.649Z",
+  "name": null,
+  "note": "Arm held by hand (outputs off), turned to the right side of the mat (about X 150, by marker 3), gripper holding a blue cube on the mat; the second blue cube is loose in the middle of the mat. Counts are NOT this pose; pose only from the cameras (tags 106-109).",
+  "controller": "http://10.102.4.103:8765",
+  "counts": [
+    291,
+    329,
+    267,
+    190,
+    269,
+    590
+  ],
+  "arm": "outputs off (simulator emergency stop): counts are the last commanded ones",
+  "files": {
+    "oak.jpg": "OAK on the stand, GET /api/camera/snapshot.jpg, 49 ms",
+    "webcam.jpg": "webcam on the monitor, GET /api/camera2/snapshot.jpg, 23 ms",
+    "state.json": "arm state (commanded counts), GET /api/state, 46 ms"
+  },
+  "target": {
+    "what": "centre of the cube held in the gripper",
+    "at": [
+      160,
+      110,
+      13.25
+    ],
+    "level": 0,
+    "spot": "marker2",
+    "source": "added afterwards from the placement and vision/blocks.py (OAK), 2026-10-13"
+  }
+}

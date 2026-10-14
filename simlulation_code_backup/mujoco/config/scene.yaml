@@ -1,0 +1,69 @@
+# Scene: table frame from robot-arm's camera calibration (docs/camera-table-xy-calibration.md).
+# Origin at the midpoint of the table edge nearest the arm, +X away from the arm, +Y left seen
+# from the arm, Z up. Lengths in metres, angles in degrees.
+
+table:
+  depth: 0.38              # along X
+  width: 0.30              # along Y
+  thickness: 0.010
+  color: [0.16, 0.17, 0.19, 1]
+
+base:
+  # S1 axis position. Team value: 15 mm from the edge (x = -0.015 if the base stands behind it).
+  # The calibration image shows the base plate on the printed area with the axis about 40 mm
+  # inside the near edge. Open question; change this one number when it is settled.
+  x: 0.040
+  y: 0.0
+  plate: [0.090, 0.084, 0.003]   # base plate footprint and thickness, from the Amazon drawing
+
+physics:
+  timestep: 0.002
+  gravity: -9.81
+  friction: [1.0, 0.005, 0.0001]   # pads and blocks: sliding, torsional, rolling
+  table_friction: [0.6, 0.005, 0.0001]
+
+blocks:
+  - {name: red,    kind: cube, size: 0.0265, mass: 0.012, color: [0.83, 0.26, 0.26, 1]}
+  - {name: green,  kind: cube, size: 0.0265, mass: 0.012, color: [0.09, 0.51, 0.43, 1]}
+  - {name: blue,   kind: cube, size: 0.0265, mass: 0.012, color: [0.24, 0.44, 0.82, 1]}
+  - {name: yellow, kind: cube, size: 0.0265, mass: 0.012, color: [0.88, 0.65, 0.16, 1]}
+  - {name: roof,   kind: halfround, width: 0.060, height: 0.028, depth: 0.012, mass: 0.010, color: [0.84, 0.23, 0.23, 1]}
+
+# Named slots: x, y in the table frame, yaw in degrees (0 = block edges along X and Y).
+# Keep the corridor |y| < 45 mm, x < 200 mm free: the arm sweeps through it at table height
+# when it goes from PARK to HOME and back. Keep slots at least 50 mm apart: the open gripper
+# spans 45 mm between the pads and about 62 mm over the fingers.
+slots:
+  A1: {x: 0.110, y:  0.110, yaw: 0}
+  A2: {x: 0.110, y:  0.050, yaw: 0}
+  A3: {x: 0.160, y:  0.110, yaw: 0}
+  A4: {x: 0.160, y:  0.050, yaw: 0}
+  A5: {x: 0.210, y:  0.050, yaw: 90}   # roof block, gripped across its 12 mm depth
+  T1: {x: 0.110, y: -0.110, yaw: 0}
+  T2: {x: 0.110, y: -0.050, yaw: 0}
+  T3: {x: 0.160, y: -0.110, yaw: 0}
+  T4: {x: 0.160, y: -0.050, yaw: 0}
+  T5: {x: 0.210, y: -0.050, yaw: 90}
+
+# Where each block starts.
+layout:
+  red: A1
+  green: A2
+  blue: A3
+  yellow: A4
+  roof: A5
+
+task:
+  safe_height: 0.040       # lift above the grasp height before travelling
+  approach_speed: 20       # counts per second for descend and lift
+  travel_speed: 40         # counts per second between slots
+
+cameras:
+  # 'oak' is fitted from robot-arm's calibration record at start-up, see armsim/cameras.py.
+  top:   {lookat: [0.19, 0.0, 0.0], distance: 0.75, azimuth: 180, elevation: -89.9, fovy: 45}
+  side:  {lookat: [0.12, 0.0, 0.12], distance: 0.80, azimuth: 90, elevation: -10, fovy: 45}
+  front: {lookat: [0.15, 0.0, 0.08], distance: 0.80, azimuth: 0, elevation: -15, fovy: 45}
+  oak:   {lookat: [0.19, 0.0, 0.0], distance: 0.70, azimuth: 0, elevation: -35, fovy: 50}   # fallback if the fit fails
+render:
+  width: 1280
+  height: 720

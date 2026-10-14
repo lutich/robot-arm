@@ -5,10 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Robot arm · Manual control</title>
 <link rel="stylesheet" href="/manual_control.css">
+<link rel="stylesheet" href="/simulation.css">
 <script src="/manual_control.js" defer></script>
+<script src="/simulation.js" defer></script>
 </head>
 <body>
-<header><div class="header-inner"><div class="brand"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M4 28h24M21 25V15l-6-7H7M15 8l-4 9H5m0 0v5m-2 0h4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="21" cy="15" r="2.8" fill="white" stroke="currentColor" stroke-width="2.2"/><circle cx="15" cy="8" r="2.8" fill="white" stroke="currentColor" stroke-width="2.2"/></svg><span>Robot arm</span></div><button class="emergency" id="emergency"><span class="stop-icon" aria-hidden="true"></span>EMERGENCY STOP</button></div></header>
+<header><div class="header-inner"><div class="brand"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M4 28h24M21 25V15l-6-7H7M15 8l-4 9H5m0 0v5m-2 0h4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="21" cy="15" r="2.8" fill="white" stroke="currentColor" stroke-width="2.2"/><circle cx="15" cy="8" r="2.8" fill="white" stroke="currentColor" stroke-width="2.2"/></svg><span>Robot arm</span></div><nav class="page-links"><a href="/simulation">3D viewer in its own window</a></nav><button class="emergency" id="emergency"><span class="stop-icon" aria-hidden="true"></span>EMERGENCY STOP</button></div></header>
 <main>
 <details class="accordion" open>
 <summary><span class="number">01</span><span class="section-title">Initialize</span><span class="state" id="init-state"><span class="dot"></span><span id="state-label">Off</span></span><span class="chevron" aria-hidden="true"></span></summary>
@@ -71,8 +73,27 @@
 </section>
 </div>
 </details>
+<details class="accordion" id="simulation-section" open>
+<summary><span class="number">03</span><span class="section-title">3D simulation</span><span class="chevron" aria-hidden="true"></span></summary>
+<div class="sim-layout">
+<div class="sim-stage">
+<canvas id="scene" aria-label="Three-dimensional view of the simulated arm and blocks"></canvas>
+<div class="sim-hud" id="hud">Connecting…</div>
+<div class="sim-views"><span>View</span><button class="secondary" data-view="iso">Iso</button><button class="secondary" data-view="front">Front</button><button class="secondary" data-view="side">Side</button><button class="secondary" data-view="top">Top</button></div>
+<p class="sim-hint">Drag to orbit · scroll to zoom. Axes: <b class="x">X</b> right, <b class="y">Y</b> forward, <b class="z">Z</b> up. The arm follows the commanded counts; close the gripper near a block to pick it up and open it to set the block down.</p>
+</div>
+<aside class="sim-aside">
+<p class="small-label">Blocks</p>
+<ul class="block-list" id="blocks"></ul>
+<p class="sim-status" id="sim-status" role="status" aria-live="polite"></p>
+<button class="secondary" id="reset-blocks">Reset blocks</button>
+<p class="sim-note">Link lengths and the count-to-angle mapping are an assumed visual model, not calibration. Blocks exist only in this page.</p>
+</aside>
+</div>
+<p class="connection" id="sim-connection" role="status">Connecting…</p>
+</details>
 <details class="accordion" id="camera-section" open>
-<summary><span class="number">03</span><span class="section-title">Camera</span><span class="state" id="camera-state"><span class="dot"></span><span id="camera-label">Connecting</span></span><span class="chevron" aria-hidden="true"></span></summary>
+<summary><span class="number">04</span><span class="section-title">Camera</span><span class="state" id="camera-state"><span class="dot"></span><span id="camera-label">Connecting</span></span><span class="chevron" aria-hidden="true"></span></summary>
 <div class="camera-layout">
 <div class="camera-view">
 <div class="camera-selector"><label for="camera-display">Display</label><select id="camera-display" disabled><option value="rgb">RGB</option><option id="camera-depth-option" value="depth" disabled>Depth preview</option></select></div>
@@ -96,7 +117,7 @@
 </div>
 </details>
 <details class="accordion" id="distance-section" open>
-<summary><span class="number">04</span><span class="section-title">Distance</span><span class="state" id="distance-state"><span class="dot"></span><span id="distance-label">Connecting</span></span><span class="chevron" aria-hidden="true"></span></summary>
+<summary><span class="number">05</span><span class="section-title">Distance</span><span class="state" id="distance-state"><span class="dot"></span><span id="distance-label">Connecting</span></span><span class="chevron" aria-hidden="true"></span></summary>
 <div class="distance-layout">
 <div class="distance-controls">
 <form class="distance-form" id="distance-form"><label for="distance-samples">Samples<input id="distance-samples" type="number" min="1" max="20" step="1" value="5" required disabled></label><button class="primary" id="distance-measure" type="submit" disabled>Measure</button></form>

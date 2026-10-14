@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Robot arm 3D</title>
+<style>
+  :root { --ink: #1f2a44; --muted: #6b7380; --panel: rgba(255,255,255,0.86); }
+  html, body { margin: 0; height: 100%; background: #f4f5f7; font: 13px/1.4 -apple-system, "Helvetica Neue", Arial, sans-serif; color: var(--ink); }
+  #view { position: fixed; inset: 0; width: 100% !important; height: 100% !important; display: block; }
+  #hud { position: fixed; left: 12px; top: 12px; width: 300px; padding: 10px 12px; background: var(--panel); border: 1px solid #d8dde5; border-radius: 8px; backdrop-filter: blur(6px); }
+  #hud h1 { font-size: 14px; margin: 0 0 6px; }
+  #hud table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  #hud td { padding: 1px 4px; }
+  #hud td:first-child { color: var(--muted); }
+  #status { margin-top: 6px; color: var(--muted); }
+  #events { margin-top: 6px; max-height: 70px; overflow: auto; color: #0a7d6b; }
+  #cams { position: fixed; right: 12px; top: 12px; display: flex; gap: 6px; }
+  button { background: var(--panel); border: 1px solid #c9d0da; border-radius: 6px; padding: 6px 10px; cursor: pointer; color: var(--ink); }
+  button:hover { background: #fff; }
+  #controls { position: fixed; right: 12px; bottom: 12px; width: 340px; padding: 10px 12px; background: var(--panel); border: 1px solid #d8dde5; border-radius: 8px; }
+  #controls-note { color: var(--muted); }
+  #controls .top { align-items: center; margin: 0 0 6px; }
+  #virtual.armed { background: #0a7d6b; color: #fff; border-color: #086a5b; }
+  #virtual:not(.armed) { background: #c0392b; color: #fff; border-color: #a93226; font-weight: 600; }
+  #controls:not(.virtual) { border-color: #c0392b; box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.25); }
+  #stop { background: #c0392b; color: #fff; border-color: #a93226; font-weight: 600; }
+  #controls select { background: var(--panel); border: 1px solid #c9d0da; border-radius: 6px; padding: 5px 6px; color: var(--ink); max-width: 150px; }
+  #controls .seq { border-top: 1px solid #e1e5ea; padding-top: 6px; }
+  #demo-status, #to-status { color: var(--muted); margin-top: 4px; min-height: 1.2em; }
+  #controls label.xy { display: inline-flex; grid-template-columns: none; gap: 4px; align-items: center; margin: 0; }
+  #controls input[type=number] { width: 58px; border: 1px solid #c9d0da; border-radius: 6px; padding: 4px 6px; font: inherit; }
+  #controls button.armed { background: #0a7d6b; color: #fff; border-color: #086a5b; }
+  #view.picking { cursor: crosshair; }
+  #controls label { display: grid; grid-template-columns: 34px 1fr 40px; gap: 6px; align-items: center; margin: 3px 0; font-variant-numeric: tabular-nums; }
+  #controls input[type=range] { width: 100%; }
+  #controls .row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  #hint { position: fixed; left: 12px; bottom: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+<div id="hud">
+  <h1>Robot arm</h1>
+  <table id="joints"></table>
+  <div id="status">connecting…</div>
+  <div id="events"></div>
+</div>
+<div id="cams">
+  <button data-cam="photo">Photo</button>
+  <button data-cam="iso">Iso</button>
+  <button data-cam="front">Front</button>
+  <button data-cam="top">Top</button>
+  <button data-cam="oak">Oak</button>
+  <button data-cam="gripper">Gripper</button>
+  <button id="fit" title="fit the arm into the window (key f)">Fit</button>
+  <button id="reset">Reset blocks</button>
+</div>
+<div id="controls">
+  <div class="row top">
+    <button id="virtual" title="toggle: Virtual only (model) / LIVE (controls move the arm)">Virtual only</button>
+    <span id="controls-note">connecting…</span>
+  </div>
+  <div id="sliders"></div>
+  <div class="row">
+    <button id="power">Power on</button>
+    <button data-pose="home">HOME</button>
+    <button data-pose="park">PARK</button>
+    <button data-grip="open">Open</button>
+    <button data-grip="close">Close</button>
+    <button id="stop" title="cancel and disable the outputs">STOP</button>
+  </div>
+  <div class="row seq">
+    <select id="demo-select" title="saved sequences on the connected arm"><option value="">sequence…</option></select>
+    <select id="speed-select" title="demo speed, counts per second">
+      <option value="20">20/s</option><option value="40">40/s</option><option value="60" selected>60/s</option><option value="100">100/s</option>
+    </select>
+    <button id="demo-run" title="load the sequence and run it from position 1">Run</button>
+    <button id="demo-next" title="one position at a time">Next</button>
+    <button id="demo-pause" title="finish the current step, then hold">Pause</button>
+  </div>
+  <div id="demo-status"></div>
+  <div class="row seq">
+    <label class="xy">X <input id="to-x" type="number" step="1" value="190"> mm</label>
+    <label class="xy">Y <input id="to-y" type="number" step="1" value="0"> mm</label>
+    <label class="xy">Z <input id="to-z" type="number" step="1" value="13"> mm</label>
+  </div>
+  <div class="row">
+    <button id="to-pick" title="then click on the table to fill X and Y">Pick on table</button>
+    <button id="to-go" title="go above X, Y and lower the open gripper to Z">Go &amp; lower</button>
+    <button id="to-above" title="go above X, Y at safe height, do not lower">Go above</button>
+    <button id="to-stop" title="stop the arm and the move">Stop</button>
+    <select id="to-path" title="direct: one pose straight to the target · safe: lift first, travel above, then lower">
+      <option value="direct" selected>direct</option><option value="safe">safe path</option>
+    </select>
+  </div>
+  <div id="to-status"></div>
+</div>
+<div id="hint">drag: orbit · wheel: zoom · right-drag: pan · f: fit</div>
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+<script type="module" src="./arm3d.js"></script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+# Robot geometry and servo calibration. Single source of truth for the MuJoCo model.
+# Lengths in metres, angles in degrees, counts are PCA9685 counts at nominal 60 Hz.
+# Sources: docs/arm-dimensions.md, docs/servo-calibration.md, docs/amazon-product-info.md.
+
+links:
+  shoulder_height: 0.096   # board top to the S2 axis (whiteboard only)
+  upper_arm: 0.105         # S2 to S3
+  forearm: 0.126           # S3 to S4
+  wrist: 0.067             # S4 to the gripper flange (S5 reference point)
+
+gripper:
+  # Parallel linkage fitted to the photo measurements, see docs/arm-dimensions.md.
+  # Local frame: u sideways, v down from the flange along the wrist link.
+  link_length: 0.035
+  gear_u: 0.0085
+  gear_v: 0.014
+  outer_u: 0.016            # second link pivot, 7.5 mm outside the gear (visual model only)
+  outer_v: 0.017
+  tip_inward: 0.01515      # pad contact point relative to the gear link end, inward
+  tip_down: 0.06664        # pad contact point relative to the gear link end, down
+  pad_height: 0.012
+  pad_thickness: 0.0027
+  base_plate_width: 0.064
+  base_plate_height: 0.024
+  pads_axis: y             # y: jaws open across the arm plane, confirmed on the real arm 2026-10-13; x: in the arm plane
+  open_angle: 56.4         # link angle from the down axis when fully open (tip gap 45 mm)
+  closed_angle: 11.0       # link angle when closed (pads touch)
+  open_count: 650          # team measurement: "max grip" 650 is the widest opening
+  closed_count: 490
+  torque: 0.3              # N·m at the gear link; limits the grip force
+
+servo:
+  model: MG996R
+  body: [0.0407, 0.0197, 0.0429]
+  mass: 0.055
+  torque: 0.92             # N·m, 9.4 kg·cm at 4.8 V
+  max_speed: 353           # deg/s, 60 deg per 0.17 s
+  kp: 30.0                 # position gain of the simulated servo, N·m/rad
+  kv: 0.5                  # velocity gain, N·m·s/rad
+  gear_friction: 0.1       # N·m dry friction of the unpowered gearbox; the limp arm sags slowly
+
+link_mass: 0.03            # each bracket or tube
+
+# Count to angle: angle = direction * (count - home_count) / counts_per_degree + home_angle
+# home_count: robot-arm HOME pose. counts_per_degree: measured 90° moves (docs/servo-calibration.md).
+# home_angle and direction are ASSUMPTIONS taken from robot-arm's web/simulation.js and the
+# app screenshot pose; they are not verified on the real arm yet.
+# Angle conventions: S1 yaw counter-clockwise seen from above (0 = toward the table, +X);
+# S2 lean forward from vertical; S3 bend down relative to the upper arm;
+# S4 flex down relative to the forearm (90 = gripper straight down when the forearm is level);
+# the HOME gripper is assumed 15° past vertical so that the PARK pose rests on the base plate;
+# S5 roll about the wrist link.
+channels:
+  0: {name: S1 base rotation, home_count: 320, counts_per_degree: 3.06, direction: -1, home_angle: 0}
+  1: {name: S2 shoulder,      home_count: 427, counts_per_degree: 2.44, direction: -1, home_angle: 20}
+  2: {name: S3 elbow,         home_count: 403, counts_per_degree: 2.67, direction: 1,  home_angle: 70}
+  3: {name: S4 wrist flexion, home_count: 220, counts_per_degree: 2.78, direction: -1, home_angle: 105}  # 105 rather than 90: lets the tilted PARK gripper rest its pads on the base plate instead of inside the table
+  4: {name: S5 wrist rotation, home_count: 480, counts_per_degree: 2.56, direction: -1, home_angle: 0}
+  5: {name: S6 gripper}      # mapped through gripper.open_count / closed_count

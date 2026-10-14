@@ -1,0 +1,99 @@
+{
+  "metadata": {
+    "name": "PX Robot Arm",
+    "schemaVersion": 2,
+    "units": "millimetres",
+    "coordinateSystem": "right-handed, Z-up",
+    "calibrationStatus": "provisional",
+    "source": "docs/arm-dimensions.md, docs/servo-calibration.md, reference-arm HOME/PARK records and supplied photographs",
+    "safety": "Simulation and planning data only. Historical bounds are not validated physical safety limits."
+  },
+  "dimensions": {
+    "board": [300, 380, 10],
+    "boardCenter": [0, 175, -5],
+    "shoulderHeight": 96,
+    "upperArm": 105,
+    "forearm": 126,
+    "wrist": 67,
+    "gripperOpenLength": 100,
+    "gripperClosedLength": 115,
+    "gripperOpenGap": 45,
+    "gripperClosedGap": 0,
+    "testCube": 26.5
+  },
+  "fixture": {
+    "status": "photo-derived-provisional",
+    "lowerPlate": { "size": [90, 84, 6], "center": [0, 8, 3] },
+    "upperPlate": { "size": [84, 62, 6], "center": [0, 2, 22], "top": 25 },
+    "standoffs": {
+      "radius": 4,
+      "height": 13,
+      "centers": [[-32, -18, 12.5], [-32, 22, 12.5], [32, -18, 12.5], [32, 22, 12.5]]
+    }
+  },
+  "visualReferences": {
+    "status": "photo-derived-provisional",
+    "home": { "s5OffsetDegrees": 75, "fixtureContact": false, "description": "Observed HOME counts; claw clear of the fixture with visible wrist rotation" },
+    "park": { "s5OffsetDegrees": 0, "fixtureContact": true, "contactSurface": "Base_upper_plate", "contactHeight": 25, "description": "Observed commissioning PARK counts; closed claw rests on the raised fixture plate" },
+    "zero": { "s5OffsetDegrees": 0, "fixtureContact": false, "description": "Straight-up modelling reference" }
+  },
+  "gripper": { "openTick": 490, "closedTick": 650, "mapping": "linear-visual-approximation", "status": "provisional-linkage-approximation" },
+  "joints": [
+    {"id":"S1","name":"Base rotation","min":90,"max":660,"home":320,"park":330,"zero":320,"ticksPerDegree":3.06,"direction":1,"axis":"Z","boundsStatus":"historical-unvalidated","calibrationStatus":"provisional"},
+    {"id":"S2","name":"Shoulder","min":185,"max":660,"home":427,"park":540,"zero":378,"ticksPerDegree":2.44,"direction":1,"axis":"-X","boundsStatus":"historical-unvalidated","calibrationStatus":"photo-anchored-provisional","calibrationAnchors":[{"tick":378,"degrees":0,"source":"provisional-zero"},{"tick":427,"degrees":20,"source":"HOME-photo"},{"tick":540,"degrees":25,"source":"PARK-photo"}]},
+    {"id":"S3","name":"Elbow","min":90,"max":660,"home":403,"park":580,"zero":216,"ticksPerDegree":2.67,"direction":1,"axis":"-X","boundsStatus":"historical-unvalidated","calibrationStatus":"photo-anchored-provisional","calibrationAnchors":[{"tick":216,"degrees":0,"source":"provisional-zero"},{"tick":403,"degrees":70,"source":"HOME-photo"},{"tick":580,"degrees":95,"source":"PARK-photo"}]},
+    {"id":"S4","name":"Wrist flexion","min":90,"max":660,"home":220,"park":195,"zero":470,"ticksPerDegree":2.78,"direction":-1,"axis":"-X","boundsStatus":"historical-unvalidated","calibrationStatus":"photo-anchored-provisional","calibrationAnchors":[{"tick":195,"degrees":116,"source":"PARK-photo-raised-fixture-contact-fit"},{"tick":220,"degrees":90,"source":"HOME-photo"},{"tick":470,"degrees":0,"source":"provisional-zero"}]},
+    {"id":"S5","name":"Wrist rotation","min":90,"max":660,"home":480,"park":480,"zero":480,"ticksPerDegree":2.56,"direction":1,"axis":"Z","boundsStatus":"historical-unvalidated","calibrationStatus":"provisional"},
+    {"id":"S6","name":"Gripper","min":490,"max":660,"home":650,"park":650,"boundsStatus":"historical-unvalidated","calibrationStatus":"provisional"}
+  ],
+  "planning": {
+    "mode": "calibration-only-unchecked",
+    "approachHeight": 55,
+    "liftHeight": 70,
+    "goalTolerance": 7,
+    "controllerStepCounts": 8,
+    "weights": { "changedServos": 90, "countTravel": 1, "duration": 0.25, "acceleration": 0.08, "tcpLength": 0.02 }
+  },
+  "world": {
+    "physics": {
+      "engine": "Rapier3D",
+      "purpose": "simulated cube dynamics only; not motion validation",
+      "fixedTimeStep": 0.0166666667,
+      "gravity": [0, 0, -9.81],
+      "robotRadii": { "pedestal": 28, "upperArm": 18, "forearm": 16, "wrist": 14, "gripper": 10 }
+    },
+    "cubes": [
+      {"id":"red","color":"#d83a32","position":[-108,185,13.25]},
+      {"id":"orange","color":"#f08b24","position":[-70,185,13.25]},
+      {"id":"blue","color":"#2877d3","position":[-108,235,13.25]},
+      {"id":"green","color":"#36a852","position":[-70,235,13.25]}
+    ],
+    "dropZones": { "red": [92,155,13.25], "orange": [92,195,13.25], "blue": [92,235,13.25], "green": [92,275,13.25] }
+  },
+  "tracking": {
+    "gripperMarker": {
+      "dictionary": "DICT_4X4_50",
+      "id": 6,
+      "sizeMm": 30,
+      "markerToTcpMm": [0, 0, 0],
+      "status": "unattached-and-offset-unmeasured",
+      "coordinateConvention": "+X right, +Y to printed top, +Z out of printed face",
+      "provenance": "Selected simulator tracking marker. Verify printed size and measure the rigid marker-to-TCP offset after attachment."
+    }
+  },
+  "operational": {
+    "defaultMode": "simulation",
+    "sameOriginApiBase": "/api",
+    "requiresExplicitArming": true,
+    "positionFeedback": false,
+    "poseLabel": "commanded pose",
+    "commandRateLimitHz": 10
+  },
+  "provenance": {
+    "measuredDimensions": ["dimensions.board", "dimensions.shoulderHeight", "dimensions.upperArm", "dimensions.forearm", "dimensions.wrist", "dimensions.gripperOpenLength", "dimensions.gripperClosedLength", "dimensions.gripperOpenGap", "dimensions.gripperClosedGap", "dimensions.testCube"],
+    "observedCommissioningPoses": ["joints.*.home", "joints.*.park"],
+    "historicalUnvalidatedBounds": ["joints.*.min", "joints.*.max"],
+    "provisionalAssumptions": ["fixture", "visualReferences", "gripper", "world.physics.robotRadii", "joints.*.calibrationAnchors", "tracking.gripperMarker"],
+    "validatedSafeLimits": []
+  }
+}

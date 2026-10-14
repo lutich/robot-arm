@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arm Simulator</title>
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 20h8M8 20v-4l4-6 5 2m-5-2 1-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="10" r="1.6" fill="currentColor"/><circle cx="17" cy="12" r="1.4" fill="currentColor"/></svg>
+    <span>Arm simulator</span>
+  </div>
+  <div class="target-wrap">
+    <div class="target" role="group" aria-label="Where commands go">
+      <button id="target-sim" class="on" title="Buttons, joints and tasks drive the simulation only">Simulation</button>
+      <button id="target-real" title="Connect to the real arm and, after a safety checklist, let this page move it">Real arm</button>
+    </div>
+    <button id="link-pill" class="pill" title="Real arm connection">real arm: not connected</button>
+  </div>
+  <div class="hdr-right">
+    <span id="hud" class="hud"></span>
+    <label class="hdr-speed" title="Simulation speed">Speed
+      <select id="time-scale"><option value="1">1×</option><option value="3" selected>3×</option><option value="10">10×</option><option value="30">30×</option></select></label>
+    <button id="estop" class="estop" title="Stops the simulation, and the real arm when connected (POST /api/stop)">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg>
+      EMERGENCY STOP</button>
+  </div>
+</header>
+
+<div id="live-banner" class="live-banner" hidden>
+  <span id="live-banner-text"></span>
+  <span class="grow"></span>
+  <button id="live-power" hidden>Power on (PARK → HOME)</button>
+  <button id="live-off">Back to simulation</button>
+</div>
+
+<main>
+  <section id="view">
+    <canvas id="canvas"></canvas>
+    <div id="cam-main" class="cam-main" hidden></div>
+    <div class="view-tools">
+      <button id="view-cams" title="Show both cameras here instead of the 3D view">Cameras</button>
+      <button id="cams-full" title="Both cameras full screen (Esc to leave)">⛶ Both</button>
+      <button id="live-track" title="One snapshot from each camera at the chosen interval (read only, stops after 10 min), the arm found from its tags (in background threads, one per camera) and drawn where the cameras see it; the tags seen right now are marked">● Live tracking</button>
+      <select id="live-rate" title="How often live tracking reads both cameras (one snapshot each)"><option value="500" selected>every 0,5 s</option><option value="1000">every 1 s</option><option value="2000">every 2 s</option><option value="5000">every 5 s</option><option value="10000">every 10 s</option></select>
+      <span class="sep"></span>
+      <button data-view="orbit" class="on">Perspective</button>
+      <button data-view="top">Top</button>
+      <button data-view="side">Side</button>
+      <button data-view="oak">OAK camera</button>
+      <button data-view="webcam">Webcam</button>
+      <span class="sep"></span>
+      <label><input type="checkbox" id="show-path" checked> Path</label>
+      <label><input type="checkbox" id="show-shapes"> Collision shapes</label>
+      <label title="Which tag sits on which rigid part of the arm, and which joints move that part"><input type="checkbox" id="show-tags"> Tags &amp; parts</label>
+      <input type="checkbox" id="show-ghost" hidden>
+    </div>
+    <div id="contacts" class="contacts" hidden></div>
+    <div id="track-hud" class="track-hud" hidden></div>
+    <div id="live-readout" class="live-readout" hidden></div>
+    <div id="toast" class="toast" hidden></div>
+  </section>
+
+  <div id="splitter" role="separator" aria-orientation="vertical" title="Drag to resize the sidebar (double-click: default width)"></div>
+  <aside id="panel">
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="control" class="on">Arm &amp; tasks</button>
+      <button role="tab" data-tab="camera">Camera</button>
+    </nav>
+
+    <!-- ======================= Arm & tasks ======================= -->
+    <div id="tab-control">
+      <section class="card hero">
+        <h2>Task</h2>
+        <div class="row">
+          <input id="cmd" class="big" type="text" placeholder="blue on orange · grün auf blau · yellow to 0 14" autocomplete="off">
+        </div>
+        <div class="row wrap">
+          <button id="plan-btn" class="primary big">Plan</button>
+          <button id="run-sim" class="big" disabled>▶ Run</button>
+          <button id="demo-btn" class="accent big" title="Picks and stacks cubes with the planner, then drops cubes onto the tower to show the physics (simulation only)">▶ Demo: build a tower</button>
+          <button id="sync-cams" class="accent big" title="One snapshot from each camera, cubes located (in 3D with both cameras) and put into the simulation in place of its cubes">📷 Cubes from cameras</button>
+          <button id="demo-reset" class="big" title="Stop the demo, put the cubes of the selected scenario back and the arm to HOME">↺ Reset</button>
+        </div>
+        <p id="real-reason" class="note"></p>
+        <div id="plan-out" class="plan-out"></div>
+        <details class="sub">
+          <summary>Options</summary>
+          <div class="row wrap">
+            <label class="inline">Playback
+              <select id="exec-mode">
+                <option value="demo">All joints together (demo playback)</option>
+                <option value="moves">One joint at a time (HTTP API)</option>
+              </select></label>
+            <label class="inline">Demo speed <input id="demo-speed" type="number" min="1" max="100" value="40"> counts/s</label>
+          </div>
+          <div class="row wrap">
+            <button id="export-plan" disabled>Copy as demo JSON</button>
+          </div>
+        </details>
+      </section>
+
+      <section class="card">
+        <h2>Scenario <small>block layout and the steps to execute</small></h2>
+        <div class="row wrap">
+          <div class="target small" role="group" aria-label="Where the cubes come from">
+            <button id="scn-source-pre" class="on">Predefined</button>
+            <button id="scn-source-live">Live (camera)</button>
+          </div>
+          <span id="scn-pre"><select id="scn-select"></select></span>
+        </div>
+        <p id="scn-about" class="note"></p>
+        <div id="scn-live" hidden>
+          <p class="note">Cubes from the last camera frame (Camera tab → Detect). Steps, one task per line:</p>
+          <textarea id="scn-tasks" rows="3" placeholder="blue on orange&#10;yellow on blue"></textarea>
+        </div>
+        <ol id="scn-steps" class="steps-list"></ol>
+        <div class="row wrap">
+          <button id="scn-reset">↺ Reset</button>
+          <button id="scn-sim" class="primary">▶ Run</button>
+        </div>
+        <p id="scn-state" class="note"></p>
+      </section>
+
+      <details open>
+        <summary>Joints <small>servo counts at 60 Hz, like the controller</small> <span id="joints-target" class="badge">→ simulation</span></summary>
+        <div id="joints"></div>
+        <div class="row wrap">
+          <button id="go-home">Go HOME</button>
+          <button id="go-park">Go PARK</button>
+          <button id="power-on" title="Switch the outputs back on after a stop">Re-arm</button>
+          <label class="inline">Jog step <input id="step" type="number" min="1" max="100" value="10"></label>
+          <label class="inline"><input type="checkbox" id="stop-on-contact" checked> Stop on collision</label>
+        </div>
+        <p class="note" id="pose-readout"></p>
+      </details>
+
+      <details open>
+        <summary>Scene <small>cubes on the board</small></summary>
+        <div id="cubes"></div>
+        <div class="row wrap">
+          <select id="new-colour"><option>orange</option><option>blue</option><option>yellow</option><option>green</option><option>red</option></select>
+          <label class="inline">x <input id="nx" type="number" step="0.5" value="0"></label>
+          <label class="inline">y <input id="ny" type="number" step="0.5" value="12"></label>
+          <button id="add-cube">Add</button>
+          <button id="reset-scene">Reset</button>
+        </div>
+        <p class="note">⌖ then a click on the mat drops that cube there. Cubes from the camera: Camera tab.</p>
+      </details>
+
+      <details>
+        <summary>Robot API <small id="live-status">not connected</small></summary>
+        <div class="row wrap">
+          <button id="open-real">Backend and API…</button>
+        </div>
+        <p class="note">This page, scripts and other tools all use the same robot API on this server; the header switch picks the arm behind it for everybody.</p>
+      </details>
+
+      <details>
+        <summary>Tools <small>direct moves, taught demo, servo calibration</small></summary>
+        <div class="row wrap">
+          <label class="inline">Gripper to x <input id="gx" type="number" step="0.5" value="0"></label>
+          <label class="inline">y <input id="gy" type="number" step="0.5" value="14"></label>
+          <label class="inline">z <input id="gz" type="number" step="0.5" value="5"></label>
+          <button id="goto-xyz">Go</button>
+        </div>
+        <p class="note">Gripper pointing down; z is the height of a held cube's centre (cm, board frame).</p>
+        <div class="row">
+          <button id="taught-demo" title="step1-hacks-10-direct-approach, hand-taught on the controller (docs/controller-live-2026-10-12.md)">Play the team's taught demo</button>
+        </div>
+        <details class="sub">
+          <summary>Servo calibration (angle at HOME, direction, counts per degree)</summary>
+          <table id="calib"></table>
+          <div class="row wrap">
+            <label class="inline">S1 → mat edge d <input id="mat-d" type="number" step="0.1"> cm</label>
+            <button id="calib-save">Save</button>
+            <button id="calib-reset">Defaults</button>
+            <button id="calib-export">Copy JSON</button>
+          </div>
+          <p class="note">Not measured yet (HANDOVER.md, open item 1). Defaults are fitted to the team's taught demo.</p>
+        </details>
+      </details>
+
+      <details>
+        <summary>Log</summary>
+        <div id="log" class="log"></div>
+      </details>
+    </div>
+
+    <!-- ======================= Camera ======================= -->
+    <div id="tab-camera" hidden>
+      <section class="card hero">
+        <h2>Cameras <small>simulated view with the real frame on top · selected: <span id="cam-title">OAK on the stand</span></small></h2>
+        <div class="row wrap">
+          <label class="inline">Camera <select id="cam-select"></select></label>
+        </div>
+        <div id="cam-stages" class="cam-stages">
+          <div id="cam-stage-0" class="cam-stage sel">
+            <canvas width="960" height="540"></canvas>
+            <img id="cam-photo" alt="" style="opacity:0.5">
+            <canvas id="cam-overlay"></canvas>
+          </div>
+        </div>
+        <p class="note">Both cameras at once; click one to select it for the source and calibration controls.</p>
+        <div class="row wrap">
+          <select id="cam-source">
+            <option value="saved">Saved frame, 2026-10-12</option>
+            <option value="live">Live snapshot (read only)</option>
+            <option value="video">Live video (read only, stops after 10 min)</option>
+            <option value="file">Image file…</option>
+          </select>
+          <button id="cam-refresh" disabled title="Reads one frame from every camera (both at once); nothing is sent">Refresh snapshots</button>
+          <input id="cam-file" type="file" accept="image/*" hidden>
+          <label class="inline">Real frame <input id="cam-opacity" type="range" min="0" max="100" value="50"></label>
+        </div>
+        <p class="note" id="cam-status"></p>
+        <div class="row wrap">
+          <label class="inline"><input type="checkbox" id="cam-show-sim" checked> Simulation</label>
+          <label class="inline"><input type="checkbox" id="cam-show-marks" checked> Markers</label>
+          <label class="inline"><input type="checkbox" id="cam-show-grid" checked> Mat grid &amp; axes</label>
+        </div>
+      </section>
+
+      <details open>
+        <summary>Calibration <small>camera pose and focal length from the mat markers</small></summary>
+        <div class="row wrap">
+          <button id="cam-auto" class="primary big" title="Detects the mat's ArUco markers in the frame above and fits the camera to their corners">Find markers &amp; calibrate</button>
+          <button id="cam-auto-all" title="The same for every camera that has a frame">Calibrate all cameras</button>
+          <label class="inline" title="Detect the markers and refit the camera whenever a new snapshot, video or image is loaded"><input type="checkbox" id="cam-auto-on" checked> On every new frame</label>
+          <label class="inline" title="While tracking, re-detect the markers and refit the camera every 5 s (for a camera that gets moved)"><input type="checkbox" id="cam-keep"> While tracking</label>
+        </div>
+        <p class="note" id="cam-pick-hint"></p>
+        <table id="cam-params" class="params"></table>
+        <details class="sub">
+          <summary>Manual calibration</summary>
+          <div class="row wrap">
+            <button id="cam-pick">Pick marker centres</button>
+            <button id="cam-skip">Skip marker</button>
+            <button id="cam-clear">Clear points</button>
+            <button id="cam-solve">Solve</button>
+            <button id="cam-use-saved">Corners of the saved frame</button>
+            <button id="cam-reset">Reset to blocks.py fit</button>
+            <button id="cam-copy">Copy parameters</button>
+          </div>
+        </details>
+        <details class="sub">
+          <summary>How the matching works</summary>
+          <ol class="note">
+            <li>The mat's six ArUco markers have known corners (mm). They are found in the frame (in the browser, or clicked by hand).</li>
+            <li>A homography maps the mat plane to the image (normalised DLT, at least 4 points).</li>
+            <li>The homography gives the focal length (its two rotation columns must be orthogonal and of equal length) and a first pose.</li>
+            <li>Levenberg-Marquardt then minimises the reprojection error over pose, focal length and principal point.</li>
+            <li>Green outlines: markers found in the frame. Orange: markers reprojected with the fitted camera. Red lines: the error, 5× enlarged.</li>
+          </ol>
+        </details>
+      </details>
+
+      <details open>
+        <summary>Arm tracking <small>AprilTags 106–109 on the wrist and gripper, both cameras combined</small></summary>
+        <div class="row wrap">
+          <button id="cam-arm" class="primary big" title="Finds the tags in every camera's frame, triangulates them and fits the joint angles">Track the arm</button>
+          <label class="inline" title="The arm model is drawn where the cameras see the real arm (no second arm at the commanded pose); stops with the tracking"><input type="checkbox" id="cam-arm-ghost" checked> Draw the arm at the tracked pose</label>
+          <label class="inline" title="Also fit the tag corners, in the turn each tag is found to be stuck on with"><input type="checkbox" id="cam-arm-corners" checked> Use corners</label>
+          <label class="inline"><input type="checkbox" id="cam-track-arm" checked> While tracking</label>
+          <label class="inline" title="Colour the tags by the rigid part they sit on and join the tags of one part"><input type="checkbox" id="cam-show-parts" checked> Tags &amp; parts</label>
+          <label class="inline" title="Each part where its tags alone put it (rigid-body fit), drawn over the frame"><input type="checkbox" id="cam-show-bodies" checked> Estimated parts</label>
+          <label class="inline" title="Screw heads found near the gripper (cyan) and the model screws (live tracking)"><input type="checkbox" id="cam-show-screws"> Screws</label>
+          <button id="cam-arm-learn" title="Measure where each seen tag sits on its part (relative to the part's fit) and use that">Learn tag layout</button>
+        </div>
+        <div class="row wrap">
+          <button id="cam-arm-record" title="Store the wrist and gripper poses of this frame, with the commanded S5 angle">Record pose</button>
+          <button id="cam-arm-axis" title="From 3 or more recorded poses with different S5 angles: the real S5 axis, corrected tag layout, S5 offset at HOME">Fit S5 axis</button>
+          <button id="cam-arm-clear">Clear poses</button>
+        </div>
+        <div id="cam-arm-out" class="note"></div>
+        <p class="note">Tags on one rigid part move together and count as one object: one camera may see one tag of a part and the other camera another, and both still meet in one pose. The wrist part turns only about S4 relative to the forearm, the gripper only about S5 relative to the wrist, so few views constrain the fit. Each tag seen by two cameras is also triangulated on its own. Tracked minus commanded angle is what the HOME calibration still gets wrong.</p>
+      </details>
+
+      <details>
+        <summary>Recalibrate from captures <small>tags and grip point from frames with a known cube spot (docs/recalibration.md)</small></summary>
+        <p class="note">Uses every folder in <code>docs/images/calibration/</code> whose <code>info.json</code> has a target (<code>node tools/capture.mjs --at marker3 --level 1 …</code>). Each camera is calibrated from the mat markers in its frame, the arm tags are found, and the values below are fitted together with each capture's joint angles. Before / after: the grip point's error when the pose comes from the tags alone, as live tracking finds it.</p>
+        <div class="row wrap" id="recal-params">
+          <label class="inline" title="Shift of the tags on the wrist part (109, 108), wrist frame"><input type="checkbox" value="wristX" checked> wrist tags X</label>
+          <label class="inline"><input type="checkbox" value="wristY" checked> wrist tags Y</label>
+          <label class="inline"><input type="checkbox" value="wristZ" checked> wrist tags Z</label>
+          <label class="inline" title="Sideways shift of the tags on the gripper part (107, 106), hand frame"><input type="checkbox" value="handX" checked> gripper tags X</label>
+          <label class="inline"><input type="checkbox" value="handY" checked> gripper tags Y</label>
+          <label class="inline" title="S5 hub to the centre of a held cube (ARM.G_BLOCK)"><input type="checkbox" value="grip" checked> grip length</label>
+          <label class="inline" title="S1 axis to the mat's near edge (MAT.sToEdge)"><input type="checkbox" value="d" checked> mat offset d</label>
+        </div>
+        <div class="row wrap">
+          <button id="recal-run" class="primary">Recalibrate from captures</button>
+          <button id="recal-use" disabled title="Use the fitted values for tracking and planning in this page (until reload); copy them into config.js to keep them">Use now</button>
+          <button id="recal-copy" disabled title="The values as config.js holds them (ARM_TAGS centres, ARM.G_BLOCK, MAT.sToEdge)">Copy for config.js</button>
+        </div>
+        <div id="recal-out" class="note"></div>
+      </details>
+
+      <details open>
+        <summary>Cube recognition <small>in 3D from both cameras (stacked and held cubes too); one camera: cubes on the mat</small></summary>
+        <div class="row wrap">
+          <button id="cam-detect" class="primary big" title="Finds the cubes in every camera's frame; cubes seen by two cameras are located in 3D where the viewing rays meet">Find cubes</button>
+          <button id="cam-detect-use" disabled>Put them into the sim</button>
+        </div>
+        <div class="row wrap">
+          <label class="inline" title="Runs the trackers on the frame above (best with Live video)"><input type="checkbox" id="cam-track"> Track continuously</label>
+          <label class="inline">every
+            <select id="cam-track-rate"><option value="2000">2 s</option><option value="1000" selected>1 s</option><option value="500">0,5 s</option><option value="200">0,2 s</option></select></label>
+          <label class="inline"><input type="checkbox" id="cam-track-sim"> Move sim cubes to what the camera sees</label>
+        </div>
+        <p class="note" id="cam-track-stats"></p>
+        <div id="cam-detections" class="note"></div>
+      </details>
+    </div>
+  </aside>
+</main>
+
+<script type="module" src="js/app.js"></script>
+<dialog id="real-dlg" class="dlg">
+  <form method="dialog">
+    <h2>Robot API and backend</h2>
+    <p id="dlg-backend"></p>
+    <h3>Use it from your own code</h3>
+    <pre class="api">GET  /api/state
+POST /api/move      {"channel": 0, "target": 400}
+POST /api/go_pose   {"name": "HOME"}
+POST /api/stop      {}
+GET  /api/backend           which arm answers
+POST /api/backend   {"target": "sim" | "real"}</pre>
+    <p class="note">POSTs need <code>Content-Type: application/json</code> and <code>Origin</code> set to this server, like the real controller. With the real arm active, every motion call is simulated first and answered with HTTP 409 if it would collide.</p>
+    <div class="row end"><button value="close">Close</button></div>
+  </form>
+</dialog>
+
+<dialog id="send-dlg" class="dlg">
+  <form method="dialog">
+    <h2 id="send-title">Move the real arm?</h2>
+    <div id="send-body"></div>
+    <div class="row end">
+      <button value="cancel">Cancel</button>
+      <button id="send-go" value="go" class="danger-solid" autofocus>Send to the arm</button>
+    </div>
+  </form>
+</dialog>
+</body>
+</html>

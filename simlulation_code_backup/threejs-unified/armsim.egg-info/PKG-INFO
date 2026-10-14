@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: armsim
+Version: 0.1.0
+Summary: MuJoCo sandbox for the six-servo robot arm, driven through the robot-arm control API
+Requires-Python: >=3.12
+Requires-Dist: mujoco<4,>=3.2
+Requires-Dist: numpy>=1.26
+Requires-Dist: pyyaml>=6
+Requires-Dist: fastapi>=0.110
+Requires-Dist: uvicorn>=0.29
+Provides-Extra: dev
+Requires-Dist: pytest>=8; extra == "dev"

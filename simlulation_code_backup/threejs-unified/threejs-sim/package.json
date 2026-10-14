@@ -1,0 +1,10 @@
+{
+  "name": "px-arm-sim-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "mock": "node server.mjs --mock",
+    "test": "node --test test/*.test.mjs"
+  }
+}

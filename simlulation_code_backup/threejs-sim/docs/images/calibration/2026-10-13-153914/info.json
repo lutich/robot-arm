@@ -1,0 +1,31 @@
+{
+  "taken": "2026-10-13T13:39:14.622Z",
+  "name": null,
+  "note": "Arm held by hand (outputs off), placing a blue cube on another blue cube (stack of two) in front of the base; a hand is in both frames. Counts are NOT this pose; pose only from the cameras (tags 106-109).",
+  "controller": "http://10.102.4.103:8765",
+  "counts": [
+    291,
+    329,
+    267,
+    190,
+    269,
+    590
+  ],
+  "arm": "outputs off (simulator emergency stop): counts are the last commanded ones",
+  "files": {
+    "oak.jpg": "OAK on the stand, GET /api/camera/snapshot.jpg, 48 ms",
+    "webcam.jpg": "webcam on the monitor, GET /api/camera2/snapshot.jpg, 27 ms",
+    "state.json": "arm state (commanded counts), GET /api/state, 37 ms"
+  },
+  "target": {
+    "what": "centre of the cube held in the gripper",
+    "at": [
+      193.3,
+      3,
+      39.75
+    ],
+    "level": 1,
+    "spot": "193,3 (cube finder; on the centre line near X 200)",
+    "source": "added afterwards from the placement and vision/blocks.py (OAK), 2026-10-13"
+  }
+}

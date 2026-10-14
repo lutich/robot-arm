@@ -53,6 +53,17 @@ Open **http://127.0.0.1:8765/**. Read-only API state is at
 **http://127.0.0.1:8765/api/state**. Preview simulates commands and writes
 synthetic records; it is not a physics simulator.
 
+## 3D simulation
+
+The control page includes a **3D simulation** section: a simple arm and a few
+blocks that follow the commanded counts. Jog joints, move to HOME/PARK or play
+a Demo from the page and watch the arm; close the gripper near a block to pick
+it up. Any API client moves it too. **http://127.0.0.1:8765/simulation** shows
+the same viewer alone for a second window. The geometry is an assumed visual
+model, not calibration; see [simulation](docs/simulation.md). The viewer is
+plain HTML/JavaScript without dependencies and is also served by the Pi app,
+where it mirrors a hardware session.
+
 ## Connect and deploy
 
 Configure `.pi.json` from `pi.example.json`. Provision SSH authentication and
@@ -93,12 +104,13 @@ implementations are outside this starter's scope.
 | `src/roboter_arm/calibration/` | Calibration evidence rules and recording |
 | `src/roboter_arm/provisioning/` | Laptop-side Pi connection, deployment, inspection and Wi-Fi tooling |
 | `src/roboter_arm/shared/` | Joint catalog and repository root used by all contexts |
-| `web/` | Existing HTML/CSS/JavaScript and reference illustrations |
+| `web/` | Existing HTML/CSS/JavaScript, the 3D simulation viewer and reference illustrations |
 | `config/reference-arm/` | Selected reference settings and observations |
 | `pyproject.toml`, `uv.lock` | uv project metadata and laptop environment lock |
 | `requirements/`, `runtime/` | Tested Pi dependency lock and matching wheels |
 | `tests/` | Hardware-free control, HTTP and deployment tests |
 | `docs/api.md` | Routes, request bodies, responses and extension boundary |
+| `docs/simulation.md` | 3D simulation section, block rules and model assumptions |
 | `docs/architecture.md` | Responsibilities and dependency direction |
 
 ```sh

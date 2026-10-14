@@ -27,6 +27,9 @@ initializing hardware. Interactive API docs (Swagger UI) are at
 http://127.0.0.1:8765/docs. For action request bodies and the same-origin rule, see
 [API](api.md).
 
+The **3D simulation** section on the page draws the arm and some blocks that
+follow every command; see [simulation](simulation.md).
+
 Stop with Ctrl+C. Synthetic poses and demos are written to ignored
 `artifacts/poses/synthetic/` and `artifacts/demos/synthetic/`. They cannot be
 loaded as hardware Demo records.

@@ -1,0 +1,21 @@
+{
+  "taken": "2026-10-13T15:11:47.446Z",
+  "name": "edge cases",
+  "note": null,
+  "controller": "http://10.102.4.103:8765",
+  "counts": [
+    320,
+    437,
+    403,
+    220,
+    250,
+    570
+  ],
+  "arm": "arm still",
+  "target": null,
+  "files": {
+    "oak.jpg": "OAK on the stand, GET /api/camera/snapshot.jpg, 71 ms",
+    "webcam.jpg": "webcam on the monitor, GET /api/camera2/snapshot.jpg, 37 ms",
+    "state.json": "arm state (commanded counts), GET /api/state, 46 ms"
+  }
+}

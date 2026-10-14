@@ -1,0 +1,9 @@
+# Example session for the text interface: python -m armsim.cli scripts/pick_red.txt
+# Needs a running sandbox: python -m armsim.server
+power on
+speed 60
+blocks
+run red T1
+snapshot oak
+state
+log artifacts/logs/pick_red.jsonl

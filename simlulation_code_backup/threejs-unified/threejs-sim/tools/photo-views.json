@@ -1,0 +1,14 @@
+{
+  "about": "Viewpoints of the reference photos for tools/compare.mjs. camera.markers: fit the camera to the mat's ArUco markers in the photo; otherwise pos/target (board frame, cm), vertical fov (deg) and roll (deg). counts: the arm pose (S1..S6), or pose: HOME/PARK. See docs/model-photo-comparison.md.",
+  "views": [
+    {"photo":"park-front.jpg","pose":"PARK","camera":{"pos":[-5,21.5,19],"target":[0,2,8.5],"fov":62}},
+    {"photo":"park-side-pca9685.jpg","pose":"PARK","camera":{"pos":[-30,20,26],"target":[0,0,8],"fov":62}},
+    {"photo":"park-top-view.jpg","pose":"PARK","camera":{"markers":true}},
+    {"photo":"park-top-view-forearm.jpg","pose":"PARK","camera":{"pos":[-4,8,45],"target":[0,0,10],"fov":62,"roll":0}},
+    {"photo":"park-gripper-on-base.jpg","pose":"PARK","camera":{"pos":[-4,24,10],"target":[0,4,3],"fov":50}},
+    {"photo":"base-s1-s2-from-back-left.jpg","pose":"PARK","camera":{"pos":[-14,-14,12],"target":[0,1,6],"fov":50}},
+    {"photo":"pca9685-on-upper-arm.jpg","pose":"PARK","camera":{"pos":[-26,-4,14],"target":[0,-3,13],"fov":45}},
+    {"photo":"gripper-front-closeup.jpg","pose":"PARK","camera":{"pos":[-2,20,6],"target":[0,5,5],"fov":40}},
+    {"photo":"pca9685-cables-elbow.jpg","pose":"PARK","camera":{"pos":[-22,-10,22],"target":[0,-4,13],"fov":60}}
+  ]
+}

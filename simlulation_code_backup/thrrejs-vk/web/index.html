@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PX-robo-arm-simulator</title>
+<script>
+if (window.location.protocol === 'file:') {
+  window.location.replace('http://127.0.0.1:8770/');
+}
+</script>
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 20h8M8 20v-4l4-6 5 2m-5-2 1-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="10" r="1.6" fill="currentColor"/><circle cx="17" cy="12" r="1.4" fill="currentColor"/></svg>
+    <span>PX-robo-arm-simulator</span>
+    <span id="mode-badge" class="badge">offline twin</span>
+    <button id="live-mode" class="live-mode" aria-pressed="false" title="Connect to the physical robot; explicit operator confirmation is required before motion">Live Mode</button>
+  </div>
+  <div class="hdr-right">
+    <span id="hud" class="hud"></span>
+    <label class="hdr-speed" title="Simulation speed">Speed
+      <select id="time-scale"><option value="1">1×</option><option value="3" selected>3×</option><option value="10">10×</option><option value="30">30×</option></select></label>
+    <button id="estop" class="estop" title="Stops simulated motion and clears the simulated controller queue">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg>
+      EMERGENCY STOP</button>
+  </div>
+</header>
+
+<main>
+  <section id="view">
+    <div id="visual-stage">
+      <div id="simulation-stage" class="view-pane simulation-stage">
+        <div class="pane-title"><strong>Planned simulation</strong><span id="simulation-gate">not simulated</span></div>
+        <canvas id="canvas"></canvas>
+        <div class="view-tools">
+          <button data-view="orbit" class="on">Perspective</button>
+          <button data-view="top">Top</button>
+          <button data-view="side">Side</button>
+          <button data-view="oak">OAK camera</button>
+          <span class="sep"></span>
+          <label><input type="checkbox" id="show-path" checked> Path</label>
+        </div>
+        <div id="live-link" class="live-link" role="status" hidden></div>
+        <div id="toast" class="toast" hidden></div>
+      </div>
+      <div id="live-camera-stage" class="view-pane live-camera-stage">
+        <div class="pane-title"><strong>Physical arm · live camera</strong><span id="live-camera-state">read-only view</span></div>
+        <img id="live-camera-photo" alt="Connected OAK camera view of the physical robot arm">
+        <div class="live-camera-overlay">
+          <div id="live-execution-status">No physical task executing.</div>
+          <div id="live-servo-counts">Servos: not connected</div>
+          <div class="camera-disclaimer">Visual observation only · commanded counts are not position feedback</div>
+        </div>
+      </div>
+    </div>
+    <section id="vision-readout" aria-live="polite">
+      <div class="vision-heading">
+        <strong>Camera observations</strong>
+        <button id="vision-scan">Scan camera</button>
+      </div>
+      <div id="vision-camera" class="vision-camera">Camera position: waiting for calibration.</div>
+      <div id="vision-blocks" class="vision-blocks">Blocks: waiting for a camera frame.</div>
+      <div id="vision-status" class="vision-status">Open this simulator through the local gateway to use the connected OAK camera.</div>
+    </section>
+    <section id="calibration-map" class="calibration-map" aria-labelledby="calibration-map-title">
+      <div class="calibration-map-heading">
+        <div>
+          <strong id="calibration-map-title">Recorded pose calibration</strong>
+          <span>mat position · camera marker · stored grip counts</span>
+        </div>
+        <span id="calibration-map-status">Waiting for a camera scan</span>
+      </div>
+      <div class="calibration-content">
+        <figure class="mat-reference-map">
+          <svg id="mat-reference-svg" viewBox="0 0 300 260" role="img" aria-labelledby="mat-map-title mat-map-description">
+            <title id="mat-map-title">Top-down calibration mat map</title>
+            <desc id="mat-map-description">Fixed marker IDs zero through five and recorded Pos left and right reference positions.</desc>
+          </svg>
+          <figcaption><span class="marker-key">● marker ID</span><span class="pose-key">◆ recorded pose</span><span class="seen-key">◎ seen by camera</span></figcaption>
+        </figure>
+        <div class="calibration-table-wrap">
+          <table>
+            <thead>
+              <tr><th>Pose</th><th>Mat reference</th><th>Nearest marker</th><th>Camera observation</th><th>Grip S1–S6</th></tr>
+            </thead>
+            <tbody id="calibration-map-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <p class="calibration-map-note">Camera marker coordinates are image pixels. Servo counts are observed stored grab poses, not validated safe limits. Pos3_right remains inferred.</p>
+    </section>
+  </section>
+
+  <div id="splitter" role="separator" aria-orientation="vertical" title="Drag to resize the sidebar (double-click: default width)"></div>
+  <aside id="panel">
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="control" class="on">Arm &amp; tasks</button>
+      <button role="tab" data-tab="camera">Camera</button>
+    </nav>
+
+    <!-- ======================= Arm & tasks ======================= -->
+    <div id="tab-control">
+      <section class="card pose-card">
+        <h2>Robot position</h2>
+        <div class="pose-buttons">
+          <button id="go-home" class="big">HOME</button>
+          <button id="go-park" class="big">PARK</button>
+          <button id="go-straight" class="big">STRAIGHT UP</button>
+        </div>
+        <p class="note">In <strong>Live Armed</strong> mode, HOME and PARK move the real arm to the controller's own definitions; STRAIGHT UP stays simulation-only. Collision checks are disabled during calibration; wait for <strong>idle</strong> before choosing another pose.</p>
+      </section>
+
+      <section class="card task-status-card" aria-live="polite" aria-atomic="true">
+        <div class="task-status-heading">
+          <h2>Live task status</h2>
+          <span id="task-status-badge" class="task-state idle">idle</span>
+        </div>
+        <p id="task-status-name" class="task-status-name">No active task</p>
+        <dl class="task-status-grid">
+          <div><dt>Current position</dt><dd id="task-current">Waiting for a task</dd></div>
+          <div><dt>Destination</dt><dd id="task-destination">—</dd></div>
+        </dl>
+        <p id="task-status-message" class="task-status-message">No task is currently running.</p>
+        <div id="plan-panel" class="plan-panel" aria-live="off">
+          <div class="plan-head"><strong>Task plan</strong><span id="plan-phase" class="task-state idle">no plan</span></div>
+          <form id="plan-form" class="plan-form">
+            <input id="plan-text" type="text" placeholder="blue on orange · grab green · red to 5 15" autocomplete="off" aria-label="Task">
+            <button id="plan-submit" class="primary" type="submit">Plan &amp; simulate</button>
+          </form>
+          <p id="plan-summary" class="note"></p>
+          <div class="plan-progress" aria-hidden="true"><div id="plan-progress-bar"></div></div>
+          <p id="plan-step" class="note"></p>
+          <div class="row wrap plan-controls">
+            <label class="inline">Sim speed
+              <select id="plan-speed">
+                <option value="1">1× robot timing</option>
+                <option value="2">2×</option>
+                <option value="4">4×</option>
+              </select></label>
+            <button id="plan-replay" disabled>Replay</button>
+            <button id="plan-halt" disabled title="Simulation: stop it. Live: finish the current servo step, then hold the pose.">Halt</button>
+            <button id="plan-clear" disabled title="Stop the simulation, put the scene back as it was before the plan and reset the status, ready for another task">Stop &amp; clear</button>
+            <label class="inline" title="Translucent blue arm at the robot's commanded pose while Live Mode is connected"><input id="ghost-show" type="checkbox" checked> Live arm ghost</label>
+          </div>
+          <div class="plan-live">
+            <button id="plan-run-live" class="danger big" disabled>Run live</button>
+            <p id="plan-gate" class="note"></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Task panel hidden; its startup wiring in app.js and demo.js is commented out too.
+      <section class="card hero">
+        <h2>Task</h2>
+        <p class="safety-strip">Calibration mode · IK and servo bounds only · no collision model</p>
+        <label class="task-picker" for="task-preset">
+          <span>Choose a simulation task</span>
+          <select id="task-preset">
+            <option value="">Select a task…</option>
+            <option value="Grab the orange cube">Grab orange cube</option>
+            <option value="Grab the green cube">Grab green cube</option>
+            <option value="Grab the blue cube">Grab blue cube</option>
+            <option value="Grab the yellow cube">Grab yellow cube</option>
+            <option value="Move the red cube to the orange zone">Red cube → orange zone</option>
+            <option value="Move the red cube to the blue zone">Red cube → blue zone</option>
+            <option value="Move the green cube to the red zone">Green cube → red zone</option>
+            <option value="Move the green cube to the blue zone">Green cube → blue zone</option>
+          </select>
+        </label>
+        <div class="row">
+          <input id="cmd" class="big" type="text" placeholder="grab green cube · blue on orange · yellow to 0 14" autocomplete="off">
+        </div>
+        <div class="row wrap">
+          <button id="workflow-btn" class="primary big">Detect → plan → simulate</button>
+          <button id="plan-btn" class="big">Plan only</button>
+          <button id="run-sim" class="big" disabled>Run in sim</button>
+          <button id="demo-btn" class="accent big" title="Picks and stacks cubes with the planner, then drops cubes onto the tower to show the physics (simulation only)">▶ Demo: build a tower</button>
+        </div>
+      (Task panel comment continues after the nested playback-panel comment.) -->
+        <!-- Real task playback panel hidden; its app.js references are commented out too.
+        <div class="execution-gate">
+          <label><input id="live-execution-confirm" type="checkbox" disabled> Automated real task playback unavailable during calibration</label>
+          <button id="run-live" class="danger big" disabled>Real playback disabled</button>
+          <p id="execution-gate-status" class="note">Automated physical task playback is disabled while no collision model is active.</p>
+        </div>
+        -->
+      <!-- Task panel, continued:
+        <div id="plan-out" class="plan-out"></div>
+        <details class="sub">
+          <summary>Options</summary>
+          <div class="row wrap">
+            <label class="inline">Playback
+              <select id="exec-mode">
+                <option value="demo">All joints together (demo playback)</option>
+                <option value="moves">One joint at a time (controller-style preview)</option>
+              </select></label>
+            <label class="inline">Demo speed <input id="demo-speed" type="number" min="1" max="100" value="40"> counts/s</label>
+          </div>
+          <div class="row wrap">
+            <button id="export-plan" disabled>Copy as demo JSON</button>
+          </div>
+        </details>
+      </section>
+      -->
+
+      <details open>
+        <summary>Joints <small>PCA9685 counts at 60 Hz · simulated</small></summary>
+        <div id="joints"></div>
+        <div class="row wrap">
+          <button id="power-on" title="Resume the simulated controller after a stop">Re-arm simulation</button>
+          <label class="inline">Jog step <input id="step" type="number" min="1" max="100" value="10"></label>
+        </div>
+        <p class="note">No collision stopping is active. In Live Mode use small jog steps, keep the workspace clear and remain at the emergency stop.</p>
+        <p class="note" id="pose-readout"></p>
+      </details>
+
+      <details open>
+        <summary>Scene <small>cubes on the board</small></summary>
+        <div id="cubes"></div>
+        <div class="row wrap">
+          <select id="new-colour"><option>orange</option><option>blue</option><option>yellow</option><option>green</option><option>red</option></select>
+          <label class="inline">x <input id="nx" type="number" step="0.5" value="0"></label>
+          <label class="inline">y <input id="ny" type="number" step="0.5" value="12"></label>
+          <button id="add-cube">Add</button>
+          <button id="reset-scene">Reset</button>
+        </div>
+        <p class="note">⌖ then a click on the mat drops that cube there. Cubes from the camera: Camera tab.</p>
+      </details>
+
+      <details>
+        <summary>Tools <small>IK target and provisional calibration</small></summary>
+        <div class="row wrap">
+          <label class="inline">Gripper to x <input id="gx" type="number" step="0.5" value="0"></label>
+          <label class="inline">y <input id="gy" type="number" step="0.5" value="14"></label>
+          <label class="inline">z <input id="gz" type="number" step="0.5" value="5"></label>
+          <button id="goto-xyz">Go</button>
+        </div>
+        <p class="note">Gripper pointing down; z is the height of a held cube's centre (cm, board frame).</p>
+        <details class="sub">
+          <summary>Servo calibration (angle at HOME, direction, counts per degree)</summary>
+          <table id="calib"></table>
+          <div class="row wrap">
+            <label class="inline">S1 → mat edge d <input id="mat-d" type="number" step="0.1"> cm</label>
+            <button id="calib-save">Save</button>
+            <button id="calib-reset">Defaults</button>
+            <button id="calib-export">Copy JSON</button>
+          </div>
+          <p class="note">Provisional: HOME is photo-fitted and PARK is aligned to the raised support plate. Replace these values after physical joint calibration.</p>
+        </details>
+        <details class="sub" id="mode-panel">
+          <summary>Mode &amp; robot API <small id="operating-mode-label">simulation</small></summary>
+          <p class="note">Simulation remains the default. Real motion requires a same-origin API, read-only connection, explicit PARK confirmation and arming.</p>
+          <div class="row wrap">
+            <select id="operating-mode">
+              <option value="simulation">Simulation</option>
+              <option value="connected-read-only">Connected read-only</option>
+              <option value="operational-disarmed">Operational · disarmed</option>
+            </select>
+            <button id="connect-mode">Apply mode</button>
+            <label class="inline"><input id="park-confirm" type="checkbox"> Physical PARK supported and confirmed</label>
+            <button id="arm-operational" disabled>Arm operational mode</button>
+            <button id="power-off-operational" disabled>Return to PARK &amp; power off</button>
+          </div>
+          <p class="note" id="operating-mode-status">No robot API connection. All controls are virtual.</p>
+        </details>
+      </details>
+
+      <details>
+        <summary>Log</summary>
+        <div id="log" class="log"></div>
+      </details>
+    </div>
+
+    <!-- ======================= Camera ======================= -->
+    <div id="tab-camera" hidden>
+      <section class="card hero">
+        <h2>OAK camera <small>simulated view with a reference frame on top</small></h2>
+        <div class="cam-stage">
+          <canvas id="cam-sim" width="960" height="540"></canvas>
+          <img id="cam-photo" alt="" style="opacity:0.5">
+          <canvas id="cam-overlay"></canvas>
+        </div>
+        <div class="row wrap">
+          <select id="cam-source">
+            <option value="saved">Saved frame, 2026-10-12</option>
+            <option value="file">Image file…</option>
+            <option value="connected">Connected camera snapshot</option>
+          </select>
+          <button id="cam-refresh" hidden disabled>Refresh snapshot</button>
+          <input id="cam-file" type="file" accept="image/*" hidden>
+          <label class="inline">Reference frame <input id="cam-opacity" type="range" min="0" max="100" value="50"></label>
+        </div>
+        <p class="note" id="cam-status"></p>
+        <div class="row wrap">
+          <label class="inline"><input type="checkbox" id="cam-show-sim" checked> Simulation</label>
+          <label class="inline"><input type="checkbox" id="cam-show-marks" checked> Markers</label>
+          <label class="inline"><input type="checkbox" id="cam-show-grid" checked> Mat grid &amp; axes</label>
+        </div>
+      </section>
+
+      <details open>
+        <summary>Calibration <small>camera pose and focal length from the mat markers</small></summary>
+        <div class="row wrap">
+          <button id="cam-auto" class="primary big" title="Detects the mat's ArUco markers in the frame above and fits the camera to their corners">Find markers &amp; calibrate</button>
+          <label class="inline" title="Detect the markers and refit the camera whenever a saved or local reference image is loaded"><input type="checkbox" id="cam-auto-on" checked> On every new frame</label>
+          <label class="inline" title="While tracking, re-detect the markers and refit the camera every 5 s (for a camera that gets moved)"><input type="checkbox" id="cam-keep"> While tracking</label>
+        </div>
+        <p class="note" id="cam-pick-hint"></p>
+        <table id="cam-params" class="params"></table>
+        <details class="sub">
+          <summary>Manual calibration</summary>
+          <div class="row wrap">
+            <button id="cam-pick">Pick marker centres</button>
+            <button id="cam-skip">Skip marker</button>
+            <button id="cam-clear">Clear points</button>
+            <button id="cam-solve">Solve</button>
+            <button id="cam-use-saved">Corners of the saved frame</button>
+            <button id="cam-reset">Reset to blocks.py fit</button>
+            <button id="cam-copy">Copy parameters</button>
+          </div>
+        </details>
+        <details class="sub">
+          <summary>How the matching works</summary>
+          <ol class="note">
+            <li>The mat's six ArUco markers have known corners (mm). They are found in the frame (in the browser, or clicked by hand).</li>
+            <li>A homography maps the mat plane to the image (normalised DLT, at least 4 points).</li>
+            <li>The homography gives the focal length (its two rotation columns must be orthogonal and of equal length) and a first pose.</li>
+            <li>Levenberg-Marquardt then minimises the reprojection error over pose, focal length and principal point.</li>
+            <li>Green outlines: markers found in the frame. Orange: markers reprojected with the fitted camera. Red lines: the error, 5× enlarged.</li>
+          </ol>
+        </details>
+      </details>
+
+      <details open>
+        <summary>Gripper marker tracking <small>observed physical TCP</small></summary>
+        <p class="note">Attach the dedicated marker rigidly near the gripper, measure its offset to the TCP, and keep its printed face visible to the OAK camera.</p>
+        <div class="row wrap">
+          <a class="button-link" href="gripper-marker-id6.svg" download="px-gripper-marker-dict4x4-50-id6.svg">Download marker ID 6</a>
+          <label class="inline">Black marker size <input id="gripper-marker-size" type="number" min="10" max="80" step="0.1"> mm</label>
+        </div>
+        <div class="row wrap">
+          <span class="note">Marker → TCP offset</span>
+          <label class="inline">x <input id="gripper-offset-x" type="number" step="0.1"> mm</label>
+          <label class="inline">y <input id="gripper-offset-y" type="number" step="0.1"> mm</label>
+          <label class="inline">z <input id="gripper-offset-z" type="number" step="0.1"> mm</label>
+          <button id="gripper-detect" class="primary">Find marker &amp; compare</button>
+        </div>
+        <p class="note">Marker axes: +X right, +Y toward the printed top, +Z out of the printed face. The default zero offset reports the marker centre, not the real TCP.</p>
+        <div class="row wrap">
+          <label class="inline" title="Repeatedly reloads a connected snapshot, or reprocesses the selected local frame"><input type="checkbox" id="cam-track"> Track continuously</label>
+          <label class="inline">every
+            <select id="cam-track-rate"><option value="2000">2 s</option><option value="1000" selected>1 s</option><option value="500">0,5 s</option><option value="200">0,2 s</option></select></label>
+          <label class="inline"><input type="checkbox" id="cam-track-sim"> Move sim cubes to what the camera sees</label>
+        </div>
+        <p class="note" id="cam-track-stats"></p>
+        <div id="gripper-track-result" class="tracking-result note">Marker ID 6 has not been observed.</div>
+      </details>
+
+      <details open>
+        <summary>Cube recognition <small>cubes lying on the mat</small></summary>
+        <div class="row wrap">
+          <button id="cam-detect" class="primary big">Find cubes</button>
+          <button id="cam-detect-use" disabled>Put them into the sim</button>
+        </div>
+        <div id="cam-detections" class="note"></div>
+      </details>
+    </div>
+  </aside>
+</main>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

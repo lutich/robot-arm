@@ -1,0 +1,32 @@
+{
+  "taken": "2026-10-13T15:33:01+02:00",
+  "purpose": "calibration frame pair: both cameras at the same moment, arm still",
+  "pose": "gripper hanging down, holding the blue cube near the mat's near-left marker",
+  "counts": [
+    291,
+    329,
+    267,
+    190,
+    269,
+    590
+  ],
+  "countsNote": "last_command from GET /api/state; outputs were off (the controller reported: simulator emergency stop), so the servos were unpowered but the arm had not moved",
+  "cameras": {
+    "oak.jpg": "OAK on the stand, GET /api/camera/snapshot.jpg",
+    "webcam.jpg": "webcam on the monitor, GET /api/camera2/snapshot.jpg"
+  },
+  "files": {
+    "state.json": "GET /api/state at the same moment"
+  },
+  "target": {
+    "what": "centre of the cube held in the gripper",
+    "at": [
+      160,
+      -110,
+      13.25
+    ],
+    "level": 0,
+    "spot": "marker3",
+    "source": "added afterwards from the placement and vision/blocks.py (OAK), 2026-10-13"
+  }
+}

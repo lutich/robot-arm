@@ -33,7 +33,10 @@ ASSETS = {'/':('manual_control.html', 'text/html; charset=utf-8'),
           '/park-illustration-v2.png':('park-illustration-v2.png', 'image/png'),
           '/home-illustration.png':('home-illustration.png', 'image/png'),
           '/manual_control.css':('manual_control.css', 'text/css; charset=utf-8'),
-          '/manual_control.js':('manual_control.js', 'text/javascript; charset=utf-8')}
+          '/manual_control.js':('manual_control.js', 'text/javascript; charset=utf-8'),
+          '/simulation':('simulation.html', 'text/html; charset=utf-8'),
+          '/simulation.css':('simulation.css', 'text/css; charset=utf-8'),
+          '/simulation.js':('simulation.js', 'text/javascript; charset=utf-8')}
 # Swagger groups, in display order.
 TAGS = [{'name':'State', 'description':'Read-only status; polling it never prepares hardware.'},
         {'name':'Power', 'description':'Start and end an attended session; Stop disables PWM directly.'},

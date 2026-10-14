@@ -1,0 +1,10 @@
+/* 3D simulation page; shares the manual-control theme. */
+.sim-section{padding:0}.sim-layout{display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:14px;padding:14px}.sim-stage{position:relative;min-width:0}#scene{display:block;width:100%;height:min(70vh,640px);min-height:320px;border:1px solid var(--line);border-radius:12px;background:#eef2f5;touch-action:none;cursor:grab}#scene:active{cursor:grabbing}
+.sim-hud.warn{color:var(--red);border-color:#d4434366}.sim-hud{position:absolute;left:12px;top:12px;font:11px/1.5 ui-monospace,SFMono-Regular,monospace;color:#3c5364;background:#fffffff0;border:1px solid var(--line);border-radius:8px;padding:6px 9px;max-width:calc(100% - 24px);overflow-wrap:anywhere}
+.sim-views{position:absolute;right:12px;top:12px;display:flex;gap:5px;align-items:center;padding:4px;border:1px solid #e2e8ed;border-radius:10px;background:#fffffff2}.sim-views span{font-size:11px;color:var(--muted);margin:0 4px}.sim-views button{padding:6px 9px;font-size:11px}
+.sim-hint{font-size:11px;color:var(--muted);margin:10px 2px 0}.sim-hint b{font-weight:750}.sim-hint .x{color:#d44343}.sim-hint .y{color:#16836e}.sim-hint .z{color:#3c6fd1}
+.block-list{list-style:none;margin:0;padding:0;font:11px/1.6 ui-monospace,SFMono-Regular,monospace;color:#506175}.block-list li{display:flex;align-items:center;gap:7px}.swatch{width:11px;height:11px;border-radius:3px;flex:none;border:1px solid #00000022}
+.sim-aside{align-self:start;display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);background:#fcfdfe;border-radius:11px;padding:14px}.sim-aside .small-label{margin:0}.sim-status{font-size:11px;color:var(--green);min-height:16px;margin:0}.sim-status:empty{display:none}.sim-note{font-size:10px;color:var(--muted);margin:0;line-height:1.5}
+#simulation-section .connection,.sim-section .connection{margin:0 14px 12px}
+@media(max-width:1000px){.sim-layout{grid-template-columns:minmax(0,1fr) 220px}}
+@media(max-width:760px){.sim-layout{grid-template-columns:minmax(0,1fr);padding:10px}.page-links{display:none}#scene{height:min(55vh,420px)}.sim-views{right:8px;top:8px}.sim-hud{left:8px;top:8px;max-width:calc(60% - 8px)}}

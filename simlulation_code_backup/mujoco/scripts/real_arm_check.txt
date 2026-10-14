@@ -1,0 +1,5 @@
+# Read-only check against the real arm: python -m armsim.cli --target http://10.102.4.103:8765 scripts/real_arm_check.txt
+state
+blocks set red 0.110 0.110
+blocks set yellow 0.160 0.050
+blocks

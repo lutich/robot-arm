@@ -1,0 +1,22 @@
+{
+  "name": "px-robo-arm-simulator",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "serve": "node server.mjs",
+    "compare:photos": "node tools/compare.mjs",
+    "plan": "node tools/plan-task.mjs",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "^0.21.0",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "vite": "^7.1.9"
+  }
+}

@@ -66,7 +66,8 @@ class ManualAPITests(unittest.TestCase):
 
     def test_static_and_status_reads_do_not_initialize_hardware(self):
         with patch.object(self.driver, 'prepare', wraps=self.driver.prepare) as prepare:
-            for path in ('/', '/manual_control.css', '/manual_control.js', '/api/state'):
+            for path in ('/', '/manual_control.css', '/manual_control.js', '/simulation', '/simulation.css',
+                         '/simulation.js', '/api/state'):
                 self.assertEqual(self.request('GET', path)[0], 200)
             prepare.assert_not_called()
         self.assertEqual(self.request('GET', '/../../.env')[0], 404)
